@@ -1,0 +1,213 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Linear solvers
+solvers
+{
+    // p_rbgh = pressure variable used in sedFoam examples
+    p_rbgh
+    {
+        solver          GAMG;
+        tolerance       1e-06;
+        relTol          0.0001;
+        smoother        DIC; //GaussSeidel;
+        nPreSweeps      0;
+        nPostSweeps     2;
+        nFinestSweeps   2;
+        cacheAgglomeration true;
+        nCellsInCoarsestLevel 20; //default 10;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
+        minIter         1;
+    }
+
+    p_rbghFinal
+    {
+        $p_rbgh;
+        tolerance       1e-06;
+        relTol          0;
+    }
+
+    // Sediment volume fraction
+    // alpha = sediment concentration / volume fraction
+   "(alpha.a|alphaPlastic|pa)" 
+    {
+        solver          smoothSolver;   // PBiCG
+        smoother        symGaussSeidel; // DILU
+        tolerance       1e-8;
+        relTol          0.01; //0;
+        minIter         1;
+//        nSweeps         1; //the number of smoothing iterations
+    }
+
+    "(alpha.aFinal|alphaPlasticFinal|paFinal)"
+    {
+        solver          smoothSolver;   // PBiCG
+        smoother        symGaussSeidel; // DILU
+        tolerance       1e-8;
+        relTol          0;
+//        nSweeps         1; //the number of smoothing iterations
+    }
+
+    // U.a = sediment phase velocity
+    // U.b = fluid / water phase velocity
+    "U.a|U.aFinal"
+    {
+        solver          PBiCGStab; // PBiCG
+        preconditioner  DILU;      // DILU
+        tolerance       1e-7;
+        relTol          0; //0.1;
+    }
+/*
+    U.aFinal
+    {
+        $U.b;
+        relTol          0;
+    }
+*/
+    "U.b|U.bFinal"
+    {
+        solver          PBiCGStab; // PBiCG
+        preconditioner  DILU;      // DILU
+        tolerance       1e-7;
+        relTol          0; //0.1;
+    }
+/*
+    U.bFinal
+    {
+        $U.b;
+        relTol          0;
+    }
+*/
+
+    // Granular temperature; Theta controls particle fluctuation energy in kinetic theory.
+    Theta
+    {
+        solver          smoothSolver;    // PBiCG
+        smoother        symGaussSeidel;  // DILU
+        tolerance       1e-8;
+        relTol          0.01;
+        nSweeps         1;
+    }
+
+    ThetaFinal
+    {
+        $Theta;
+        relTol          0;
+    }
+
+    // Fluid-phase turbulence variables
+    "(k.b|epsilon.b|omega.b)"
+    {
+        solver          smoothSolver;    // PBiCG
+        smoother        symGaussSeidel;  // DILU
+        tolerance       1e-8;
+        relTol          0.1;
+//        nSweeps         1;
+    }
+
+    "(k.b|epsilon.b|omega.b)Final"
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-8;
+        relTol          0;
+    }
+
+    // These entries are included because sedFoam tutorials often solve
+    // beta, alphaPlastic, and pa_new_value depending on the selected model.
+    beta
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-8;
+        relTol          0.1;
+//        nSweeps         1;
+    }
+   
+    pa_new_value
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-8;
+        relTol          0.1;
+//        nSweeps         1;
+    }
+}
+
+
+PIMPLE
+{
+    momentumPredictor       yes;
+
+    nNonOrthogonalCorrectors 3; //2; //5; //1;
+    nCorrectors              1;
+    nOuterCorrectors         5; //3; //7; //2;
+    nAlphaCorr               1;
+    correctAlpha             yes;
+    nAlphaSubCycles          3; //5;
+    MULESCorr                yes;
+
+    pRefCell        0;
+    pRefValue       0;
+
+/*    residualControl
+    {
+        "U.*"
+        {
+            tolerance       1e-05;
+            relTol          0;
+        }
+        "p_rbgh"
+        {
+            tolerance       1e-05;
+            relTol          0;
+        }
+        "alpha.*"
+        {
+            tolerance       1e-05;
+            relTol          0;
+        }
+    }*/
+}
+
+
+relaxationFactors
+{
+    fields
+    {
+        p_rbgh               0.3;
+        p_rbghFinal          1;
+        pa              0.3;
+        paFinal          1;
+    }
+    equations
+    {
+        "(U.*)"            0.5;
+        "(U.*)Final"       1;
+        "(k.*|epsilon.*)"           0.7;
+        "(k.*|epsilon.*)Final"      1;
+        "(alpha.*)"           0.7;
+        "(alpha.*)Final"      1;
+
+    }
+
+}
+
+// ************************************************************************* //
