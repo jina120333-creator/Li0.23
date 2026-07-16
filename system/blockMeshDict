@@ -16,38 +16,64 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+// sedInterFoam mesh: sediment / water / air
+//
+//   z = -0.06 ~ 0.00 : sediment bed
+//   z =  0.00 ~ 0.05 : water  (still water level at z = 0.05)
+//   z =  0.05 ~ 0.08 : air    (0.03 m = 0.6 h, ~10x expected
+//                              free-surface deformation U0^2/2g ~ 3 mm)
+
 convertToMeters 1;
 
 vertices
 (
-    // z = -0.06
+    // z = -0.06 (flume bottom)
     (-0.8 -0.125 -0.06)  // 0
     ( 0.6 -0.125 -0.06)  // 1
     ( 0.6  0.125 -0.06)  // 2
     (-0.8  0.125 -0.06)  // 3
 
-    // z = 0.00
+    // z = 0.00 (initial bed surface)
     (-0.8 -0.125  0.00)  // 4
     ( 0.6 -0.125  0.00)  // 5
     ( 0.6  0.125  0.00)  // 6
     (-0.8  0.125  0.00)  // 7
 
-    // z = 0.05
+    // z = 0.05 (still water level / initial air-water interface)
     (-0.8 -0.125  0.05)  // 8
     ( 0.6 -0.125  0.05)  // 9
     ( 0.6  0.125  0.05)  // 10
     (-0.8  0.125  0.05)  // 11
+
+    // z = 0.08 (top of air layer)
+    (-0.8 -0.125  0.08)  // 12
+    ( 0.6 -0.125  0.08)  // 13
+    ( 0.6  0.125  0.08)  // 14
+    (-0.8  0.125  0.08)  // 15
 );
 
 blocks
 (
+    // Sediment: z = -0.06 ~ 0.00
+    // 12 cells, refined toward the bed surface (dz ~ 2 mm at z = 0)
     hex (0 1 2 3 4 5 6 7)
     (140 25 12)
     simpleGrading (1 1 0.2)
-    
+
+    // Water: z = 0.00 ~ 0.05
+    // Refined at BOTH ends: near the bed (sheet flow / scour) and
+    // near z = 0.05 (VOF interface capturing).
+    // lower half: 8 cells expanding x4  (dz ~ 1.4 -> 5.7 mm)
+    // upper half: 8 cells contracting x4 (dz ~ 5.7 -> 1.4 mm)
     hex (4 5 6 7 8 9 10 11)
-    (140 25 12)
-    simpleGrading (1 1 5) 
+    (140 25 16)
+    simpleGrading (1 1 ((0.5 0.5 4) (0.5 0.5 0.25)))
+
+    // Air: z = 0.05 ~ 0.08
+    // 8 cells, fine at the interface (dz ~ 1.7 mm), coarse at the top
+    hex (8 9 10 11 12 13 14 15)
+    (140 25 8)
+    simpleGrading (1 1 4)
 );
 
 boundary
@@ -57,7 +83,7 @@ boundary
         type patch;
         faces
         (
-            (0 4 7 3)  
+            (0 4 7 3)
         );
     }
 
@@ -70,12 +96,21 @@ boundary
         );
     }
 
+    inletAir
+    {
+        type patch;
+        faces
+        (
+            (8 12 15 11)
+        );
+    }
+
     outletSediment
     {
         type patch;
         faces
         (
-            (1 2 6 5)      
+            (1 2 6 5)
         );
     }
 
@@ -88,6 +123,15 @@ boundary
         );
     }
 
+    outletAir
+    {
+        type patch;
+        faces
+        (
+            (9 10 14 13)
+        );
+    }
+
     sideWalls
     {
         type wall;
@@ -96,10 +140,12 @@ boundary
             // y = -0.125
             (0 1 5 4)
             (4 5 9 8)
+            (8 9 13 12)
 
             // y = 0.125
             (3 7 6 2)
             (7 11 10 6)
+            (11 15 14 10)
         );
     }
 
@@ -112,12 +158,13 @@ boundary
         );
     }
 
+    // Atmosphere boundary (open to air)
     top
     {
-        type wall;
+        type patch;
         faces
         (
-            (8 9 10 11)
+            (12 13 14 15)
         );
     }
 );

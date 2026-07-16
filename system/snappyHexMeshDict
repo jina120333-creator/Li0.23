@@ -27,11 +27,12 @@ geometry
     pier
     {
         type searchableCylinder;
-        // Computational domain:
-        // z = -0.06 ~ 0.05
-        // Cylinder is slightly extended beyond the domain.
+        // Computational domain (sedInterFoam, with air layer):
+        // z = -0.06 ~ 0.08
+        // Surface-piercing pier: cylinder is slightly extended
+        // beyond the domain on both ends.
         point1 (0 0 -0.061);
-        point2 (0 0  0.051);
+        point2 (0 0  0.081);
         radius 0.02; // D = 0.04 m
     }
 
@@ -41,8 +42,10 @@ geometry
         type searchableBox;
         //min (-0.10 -0.075 -0.030);
         //max ( 0.10  0.075  0.050);
+        // Extended above the still water level (z = 0.05) to resolve
+        // the bow wave / run-up at the surface-piercing pier.
         min (-0.06 -0.055 -0.015);
-        max ( 0.06  0.055  0.050);
+        max ( 0.06  0.055  0.060);
     }
 
     // Fine scour-bed region around expected initial scour hole
