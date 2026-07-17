@@ -38,13 +38,24 @@ t* = sqrt(g(s-1)·d50³)/D² · t = 0.03696 · t     →   t* 1 = 27.06 s
 Stage 0 (t_sim = 0–3 s)    : 하상 침하(settling).  mus/mu2 = 10/10.5,
                              maxDeltaT = 2e-4.  초기 하상(alpha=0.60)은 입자
                              압력이 0인 상태라 자중으로 압밀되는데, 이 과정은
-                             Johnson-Jackson pff의 강한 강성(stiffness) 때문에
+                             입자압의 강한 강성(stiffness) 때문에
                              유동 CFL보다 훨씬 작은 dt가 필요.
-Stage 1 (t_sim = 3–60 s)   : 하상 동결 스핀업.  maxDeltaT = 1e-3.
+Stage 1 (t_sim = 3–60 s)   : 하상 동결 스핀업.  maxDeltaT = 5e-4.
                              하상은 강체처럼 고정되고 유동/난류장만 발달.
-Stage 2 (t_sim = 60–360 s) : mus/mu2 = 0.35/0.97 복원, maxDeltaT = 5e-4,
+Stage 2 (t_sim = 60–360 s) : mus/mu2 = 0.63/1.13 복원, maxDeltaT = 2e-4,
                              세굴 진행.   ★ 실험 시계:  t_exp = t_sim − 60
 ```
+
+★ 압밀 안정성의 핵심은 `PPressureModel MuI` (granularRheologyProperties):
+팽창성 입자압 pa = (Bφ·α/(αMaxG−α))²·ρa·d²·|D|² 가 α → alphaMaxG(0.625)에서
+발산하며 과잉 압밀을 막아 줍니다. `none`으로 두면 α가 Johnson-Jackson
+pff의 특이점(alphaMax = 0.635)까지 그대로 압밀되어 pff ~ 1e10 Pa에 셀이
+고착되고, 그 셀에서 나오는 ±10 m/s 속도 제트가 dt를 짓눌러 계산이
+사실상 멈춥니다 (초기 발산의 근본 원인). alphaMaxG < alphaMax 를 반드시
+유지하세요. mus/mu2/I0/Bphi/relaxPa 값은 sedFoam 3DScour 튜토리얼
+(Nagel et al. 2020, 원형 실린더 세굴, 검증됨) 값입니다.
+그래도 침하 단계가 불안정하면 튜토리얼처럼 1D 컬럼 프리커서(1D sedFoam
+계산 → funkySetFields 매핑)로 평형 하상에서 시작하는 방법이 정석입니다.
 
 - `endTime`, `mus·mu2`, `maxCo·maxAlphaCo·maxDeltaT`는 각각
   `system/endTimeControl`, `constant/musControl`, `system/timeStepControl`

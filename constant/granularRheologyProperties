@@ -21,11 +21,13 @@ granularDilatancy  off;
 
 granularCohesion  off;
 
-// Must be consistent with alphaMax (0.635) in ppProperties: the solver
-// clips alpha at 0.635, so with alphaMaxG = 0.61 the whole bed sits in the
-// saturated branch of the BoyerEtAl viscosity (alpha/alphaMaxG capped at
-// 0.99 -> x100 amplification everywhere in the bed).
-alphaMaxG       alphaMaxG [ 0 0 0 0 0 0 0 ] 0.635;
+// alphaMaxG MUST stay strictly BELOW alphaMax (0.635, ppProperties):
+// with PPressureModel MuI the dilatant pressure
+//   pa = (Bphi*alpha/(alphaMaxG-alpha))^2 * rhoa*da^2*|D|^2
+// diverges as alpha -> alphaMaxG, so compaction is stopped at 0.625 and
+// alpha can never reach the Johnson-Jackson pff singularity at 0.635.
+// (0.625 = sedFoam 3DScour tutorial value, Nagel et al. 2020.)
+alphaMaxG       alphaMaxG [ 0 0 0 0 0 0 0 ] 0.625;
 
 // mus AND mu2 live in constant/musControl so the Allrun script can freeze
 // the bed during the rigid-bed spin-up stage and restore the physical
@@ -37,19 +39,30 @@ alphaMaxG       alphaMaxG [ 0 0 0 0 0 0 0 ] 0.635;
 // driver of the spin-up blow-up.
 #include        "musControl"
 
-I0              I0  [ 0 0 0 0 0 0 0 ] 0.69;
+// I0, Bphi: mu(I)/dilatancy coefficients for sand in water from the
+// sedFoam 3DScour tutorial (Nagel et al. 2020, cylinder scour, validated).
+I0              I0  [ 0 0 0 0 0 0 0 ] 0.6;
 
-Bphi            Bphi [ 0 0 0 0 0 0 0 ] 0.31;
+Bphi            Bphi [ 0 0 0 0 0 0 0 ] 0.66;
 
 n               n [ 0 0 0 0 0 0 0 ] 2.5;
 
 Dsmall          Dsmall [ 0 0 -1 0 0 0 0 ] 1e-4;
 
-relaxPa         relaxPa [ 0 0 0 0 0 0 0 ] 1;
+// Consolidation time scale for pa (tau_inv = relaxPa*alpha*|D|).
+// relaxPa = 1 makes pa follow the instantaneous equilibrium value, which
+// lets the settling bed oscillate; 3e-4 (tutorial value) gives pa a memory
+// and damps the compaction transient.
+relaxPa         relaxPa [ 0 0 0 0 0 0 0 ] 3e-4;
 
 FrictionModel   MuI;
 
-PPressureModel  none;
+// MuI (NOT none): shear-induced/dilatant particle pressure. This is the
+// term that resists over-compaction of the bed. With 'none' the only
+// particle pressure is the Johnson-Jackson pff, which is negligible up to
+// alpha ~ 0.61 and singular at 0.635 - so the collapsing bed shot straight
+// into pff ~ 1e10 Pa and stayed pinned there (the spin-up blow-up).
+PPressureModel  MuI;
 
 FluidViscosityModel BoyerEtAl;
 

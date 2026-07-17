@@ -17,14 +17,16 @@ FoamFile
 
 dimensions      [1 -1 -2 0 0 0 0];
 
-internalField   uniform 1e-6;	//0;
+internalField   uniform 0;
 
 boundaryField
 {
+    // zeroGradient like the sedFoam 3DScour tutorial: the particle
+    // pressure at the bottom/pier walls must be free to carry the bed
+    // weight; fixedValue 0 kills the support exactly where it is needed.
     "(sideWalls|bottom|pier)"
     {
-	type fixedValue;
-        value uniform 0;
+        type            zeroGradient;
     }
     top
     {

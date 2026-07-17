@@ -1,7 +1,9 @@
 // Managed by Allrun:
 //   spin-up stage (rigid bed): mus = 10,   mu2 = 10.5  (bed effectively immobile)
-//   scour stage  (mobile bed): mus = 0.35, mu2 = 0.97  (physical mu(I) rheology)
+//   scour stage  (mobile bed): mus = 0.63, mu2 = 1.13  (sand in water,
+//                              sedFoam 3DScour tutorial / Nagel et al. 2020;
+//                              mus = tan(32 deg) - note tan, not sin)
 // mu2 MUST stay > mus: mu(I) runs from mus (I->0) to mu2 (I->inf), so
 // mu2 < mus means friction weakens with shear rate -> ill-posed/unstable.
-mus             mus  [ 0 0 0 0 0 0 0 ] 0.35;
-mu2             mu2  [ 0 0 0 0 0 0 0 ] 0.97;
+mus             mus  [ 0 0 0 0 0 0 0 ] 0.63;
+mu2             mu2  [ 0 0 0 0 0 0 0 ] 1.13;

@@ -12,8 +12,8 @@ done
 
 # restore stage-control includes to their defaults
 cat > constant/musControl << 'EOF'
-mus             mus  [ 0 0 0 0 0 0 0 ] 0.35;
-mu2             mu2  [ 0 0 0 0 0 0 0 ] 0.97;
+mus             mus  [ 0 0 0 0 0 0 0 ] 0.63;
+mu2             mu2  [ 0 0 0 0 0 0 0 ] 1.13;
 EOF
 cat > system/endTimeControl << 'EOF'
 endTime         360;
