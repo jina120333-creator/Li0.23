@@ -41,8 +41,11 @@ divSchemes
 // UEqn
     div(phia,Ua)    Gauss linearUpwind grad(Ua);
     div(phib,Ub)    Gauss linearUpwind grad(Ub);
-    div(phi.a,U.a)    Gauss upwind phi; //Gauss limitedLinearV 1;
-    div(phi.b,U.b)    Gauss upwind phi; //Gauss limitedLinearV 1;
+    // 2nd-order momentum convection: 1st-order upwind smears the flow
+    // acceleration at the pier flanks and the horseshoe vortex, which
+    // under-predicts bed shear stress (critical in clear-water scour).
+    div(phi.a,U.a)    Gauss linearUpwind grad(U.a); //Gauss upwind phi; //Gauss limitedLinearV 1;
+    div(phi.b,U.b)    Gauss linearUpwind grad(U.b); //Gauss upwind phi; //Gauss limitedLinearV 1;
     div(phiRa,Ua)   Gauss linear; //Gauss upwind phi;
     div(phiRb,Ub)   Gauss linear; //Gauss upwind phi;
     div(Rca)        Gauss linear;

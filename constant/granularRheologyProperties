@@ -23,7 +23,10 @@ granularCohesion  off;
 
 alphaMaxG       alphaMaxG [ 0 0 0 0 0 0 0 ] 0.61;
 
-mus             mus  [ 0 0 0 0 0 0 0 ] 0.35;
+// mus lives in constant/musControl so the Allrun script can freeze the bed
+// during the rigid-bed spin-up stage (mus = 10) and restore the physical
+// value (mus = 0.35) for the scour stage without rewriting this file.
+#include        "musControl"
 
 mu2             mu2  [ 0 0 0 0 0 0 0 ] 0.97;
 

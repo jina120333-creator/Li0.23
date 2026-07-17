@@ -24,13 +24,23 @@ startTime       startFrom;
 
 stopAt          endTime;
 
-endTime         300; // t* = 11 corresponds to approximately 300 s.
+// Two-stage run (see README_scour_comparison.md):
+//   Stage 1 (rigid-bed spin-up):   t = 0..60    -> Allrun writes endTime 60
+//   Stage 2 (scour, mobile bed):   t = 60..360  -> Allrun writes endTime 360
+// The scour clock is t_exp = t_sim - 60, so t_sim = 360 corresponds to
+// 300 s of scour time (t* = 11, the paper's first PIV instant).
+// endTime lives in system/endTimeControl so the Allrun script can switch
+// stages without rewriting (and de-commenting) this file.
+#include        "endTimeControl"
 
 deltaT          1e-6; //1e-4;
 
 writeControl    adjustableRunTime;
 
-writeInterval   0.1;//0.05; //
+// 2 s between full-field writes (0.1 s produced ~3600 time dirs over a full
+// run). The scour-depth time series is sampled every 1 s by the 'bedLevels'
+// functionObject below, independently of the field write interval.
+writeInterval   2; //0.1;//0.05; //
 
 //purgeWrite      0;
 
@@ -107,6 +117,81 @@ functions
         writeControl    writeTime;
     }
     */
+
+    // ------------------------------------------------------------------
+    // Approach-flow monitor: vertical profile of U.b and k.b at x = -0.4 m
+    // (10D upstream of the pier). Used to (a) verify the log-law profile
+    // survives the 0.8 m approach reach and (b) decide when the rigid-bed
+    // spin-up has converged: depth-averaged U ~ 0.233 m/s, and u* from a
+    // log-law fit ~ 0.016 m/s. See scripts/check_approach_flow.py.
+    // ------------------------------------------------------------------
+    approachFlow
+    {
+        type            sets;
+        libs            (sampling);
+        writeControl    adjustableRunTime;
+        writeInterval   5;
+        setFormat       csv;
+        interpolationScheme cellPoint;
+        fields          (U.b k.b);
+
+        sets
+        (
+            approach
+            {
+                type    uniform;
+                axis    z;
+                start   (-0.4 0 0.0005);
+                end     (-0.4 0 0.0495);
+                nPoints 99;
+            }
+        );
+    }
+
+    // ------------------------------------------------------------------
+    // Bed-level monitor: vertical alpha.a profiles at the pier front and
+    // both sides, 2.5 mm off the pier surface (the experiment reads the
+    // scour depth from a scale label on the pier itself).
+    // Post-processed by scripts/extract_scour.py into S(t) and S/D vs t*.
+    // ------------------------------------------------------------------
+    bedLevels
+    {
+        type            sets;
+        libs            (sampling);
+        writeControl    adjustableRunTime;
+        writeInterval   1;
+        setFormat       csv;
+        interpolationScheme cellPoint;
+        fields          (alpha.a);
+
+        sets
+        (
+            front   // upstream face, (x, y) = (-0.0225, 0)
+            {
+                type    uniform;
+                axis    z;
+                start   (-0.0225  0      -0.045);
+                end     (-0.0225  0       0.005);
+                nPoints 201;
+            }
+            sideL   // left flank, (x, y) = (0, +0.0225)
+            {
+                type    uniform;
+                axis    z;
+                start   ( 0        0.0225 -0.045);
+                end     ( 0        0.0225  0.005);
+                nPoints 201;
+            }
+            sideR   // right flank, (x, y) = (0, -0.0225)
+            {
+                type    uniform;
+                axis    z;
+                start   ( 0       -0.0225 -0.045);
+                end     ( 0       -0.0225  0.005);
+                nPoints 201;
+            }
+        );
+    }
 }
 
 

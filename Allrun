@@ -1,0 +1,111 @@
+#!/bin/sh
+# =============================================================================
+# Two-stage sedFoam run for comparison with Li, Yang & Yang (2020), Water 12,
+# 2370 (pier scour, D = 4 cm, h = 5 cm, U0 = 0.233 m/s, d50 = 0.6 mm).
+#
+#   Stage 1  t = 0..SPINUP_END   rigid-bed spin-up (mus = 10, bed immobile):
+#                                the flow field develops over the flat bed.
+#   Stage 2  t = SPINUP_END..SCOUR_END   mobile bed (mus = 0.35): scour runs.
+#
+# Time alignment with the experiment:  t_exp = t_sim - SPINUP_END
+#   t_exp =  54 s -> t* = 2   (paper: side ~20 mm, front ~12 mm)
+#   t_exp = 298 s -> t* = 11  (paper: side ~24 mm, front ~13-18 mm)
+#
+# Environment overrides:
+#   SOLVER=sedFoam_rbgh   solver binary name
+#   RUN_PARALLEL=1        0 = serial
+#   NP=<n>                override numberOfSubdomains for this run
+#   SKIP_MESH=1           reuse existing mesh + 0/ (restart workflows)
+# =============================================================================
+cd "${0%/*}" || exit 1
+
+SPINUP_END=60
+SCOUR_END=360      # SPINUP_END + 300 s of scour time (t* = 11)
+
+SOLVER="${SOLVER:-sedFoam_rbgh}"
+command -v "$SOLVER" >/dev/null 2>&1 || SOLVER=sedFoam
+if ! command -v "$SOLVER" >/dev/null 2>&1
+then
+    echo "ERROR: no sedFoam solver (sedFoam_rbgh / sedFoam) in PATH." >&2
+    exit 1
+fi
+
+RUN_PARALLEL="${RUN_PARALLEL:-1}"
+NP="${NP:-$(sed -n 's/^numberOfSubdomains[[:space:]]*\([0-9]*\);.*/\1/p' system/decomposeParDict)}"
+
+runSolver()
+{
+    stage="$1"
+    if [ "$RUN_PARALLEL" = 1 ]
+    then
+        mpirun -np "$NP" "$SOLVER" -parallel > "log.${SOLVER}.${stage}" 2>&1
+    else
+        "$SOLVER" > "log.${SOLVER}.${stage}" 2>&1
+    fi
+}
+
+set -e
+
+# ---------------------------------------------------------------- mesh + IC
+if [ "${SKIP_MESH:-0}" != 1 ]
+then
+    echo ">> blockMesh"
+    blockMesh > log.blockMesh 2>&1
+
+    echo ">> snappyHexMesh"
+    snappyHexMesh -overwrite > log.snappyHexMesh 2>&1
+    checkMesh > log.checkMesh 2>&1 || echo "   (checkMesh reported issues, see log.checkMesh)"
+
+    echo ">> initial fields"
+    rm -rf 0
+    cp -r 0_org 0
+    rm -rf 0/tubpropotes        # leftover template files, not solver input
+
+    setFields > log.setFields 2>&1
+
+    # Interior log-law initialisation (shortens the spin-up). Non-fatal:
+    # the rigid-bed spin-up alone is sufficient, just slower to converge.
+    if ! setExprFields > log.setExprFields 2>&1
+    then
+        echo "   WARNING: setExprFields failed (see log.setExprFields);"
+        echo "            continuing with fluid at rest - consider a longer spin-up."
+    fi
+
+    if [ "$RUN_PARALLEL" = 1 ]
+    then
+        echo ">> decomposePar ($NP subdomains)"
+        decomposePar -force > log.decomposePar 2>&1
+    fi
+fi
+
+# ------------------------------------------------- stage 1: rigid-bed spin-up
+echo ">> Stage 1: rigid-bed spin-up, t = 0..${SPINUP_END} s (mus = 10)"
+cat > constant/musControl << EOF
+// Managed by Allrun (stage 1: rigid bed)
+mus             mus  [ 0 0 0 0 0 0 0 ] 10;
+EOF
+cat > system/endTimeControl << EOF
+// Managed by Allrun (stage 1)
+endTime         ${SPINUP_END};
+EOF
+runSolver spinup
+
+echo "   Spin-up done. Check convergence before trusting the scour stage:"
+echo "     python3 scripts/check_approach_flow.py"
+echo "   (target: depth-averaged U ~ 0.233 m/s, u* ~ 0.016 m/s at x = -0.4 m)"
+
+# ----------------------------------------------------- stage 2: mobile bed
+echo ">> Stage 2: scour, t = ${SPINUP_END}..${SCOUR_END} s (mus = 0.35)"
+echo "   Experimental clock: t_exp = t_sim - ${SPINUP_END}"
+cat > constant/musControl << EOF
+// Managed by Allrun (stage 2: mobile bed, physical value)
+mus             mus  [ 0 0 0 0 0 0 0 ] 0.35;
+EOF
+cat > system/endTimeControl << EOF
+// Managed by Allrun (stage 2)
+endTime         ${SCOUR_END};
+EOF
+runSolver scour
+
+echo ">> Done. Extract the scour time series and compare with the paper:"
+echo "     python3 scripts/extract_scour.py --t0 ${SPINUP_END}"

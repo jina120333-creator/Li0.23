@@ -48,10 +48,13 @@ geometry
     // Fine scour-bed region around expected initial scour hole
     scourBedFineBox
     {
+        // z-min extended -0.020 -> -0.035: measured side scour reaches
+        // ~24 mm below the initial bed by t* = 11 (~298 s), so the hole
+        // must remain inside the refined region for the whole run.
         type searchableBox;
         //min (-0.12 -0.075 -0.020);
         //max ( 0.18  0.075  0.020);
-        min (-0.08 -0.060 -0.020);
+        min (-0.08 -0.060 -0.035);
         max ( 0.14  0.060  0.020);
     }
 

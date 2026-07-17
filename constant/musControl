@@ -1,0 +1,4 @@
+// Managed by Allrun:
+//   spin-up stage (rigid bed): mus = 10   (bed effectively immobile)
+//   scour stage  (mobile bed): mus = 0.35 (physical value, mu(I) rheology)
+mus             mus  [ 0 0 0 0 0 0 0 ] 0.35;

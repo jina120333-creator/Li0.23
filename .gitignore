@@ -1,0 +1,18 @@
+# run artifacts (case is tracked as a template)
+0/
+processor*/
+postProcessing/
+dynamicCode/
+log.*
+scour_timeseries.csv
+scour_vs_paper.png
+
+# generated mesh
+constant/polyMesh/
+constant/extendedFeatureEdgeMesh/
+
+# numbered time directories
+[0-9]*/
+[0-9]*.[0-9]*/
+!0_org/
+__pycache__/
