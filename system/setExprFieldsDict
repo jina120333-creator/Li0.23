@@ -24,12 +24,37 @@ FoamFile
 //   ustar = 0.01617 m/s, kappa = 0.41, ks = 2.5*d50 = 1.5e-3 m
 //   ustar/kappa = 0.0394390
 //
+// The bed (z < 0) is initialised with the compaction profile that puts the
+// Johnson-Jackson contact pressure pff(alpha) in hydrostatic equilibrium
+// with the submerged overburden sigma(z) ~ (rhoa-rhob)*g*alphaMean*|z|:
+// a uniform alpha = 0.60 bed has pff(0.60) = 26 Pa but needs ~600 Pa at
+// the bottom, so it collapses in the first milliseconds, overshoots to
+// alphaMax = 0.635 and gets pinned on the pff singularity (pff ~ 1e10 Pa).
+// The double exponential below is a least-squares fit to the exact
+// (self-consistent) inversion of pff(alpha) = sigma(z) for Fr=0.05,
+// eta0=3, eta1=5, alphaMinFriction=0.57, alphaMax=0.635: the resulting
+// pff supports 96-112% of the overburden over the whole 60 mm bed depth
+// (alpha: 0.570 at the surface -> 0.6125 at z = -0.06, mean 0.608).
+//
 // Run AFTER setFields (alpha.a), BEFORE the spin-up stage:
 //   setExprFields
 // U.a is left untouched (zero), the sediment region gets zero velocity.
 
 expressions
 (
+    alphaInit
+    {
+        field       alpha.a;
+        dimensions  [0 0 0 0 0 0 0];
+
+        expression
+        #{
+            (pos().z() < 0)
+          ? 0.6141 - 0.0120*exp(pos().z()/0.030) - 0.0321*exp(pos().z()/0.0010)
+          : 0.0
+        #};
+    }
+
     UbInit
     {
         field       U.b;

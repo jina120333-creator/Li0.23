@@ -30,10 +30,10 @@ regions
 
         fieldValues
         (
-            // 0.60: close to random loose packing.
-            // 0.58 sits right above alphaMinFriction (0.57) and lets the
-            // bed settle/compact during the run, contaminating the scour
-            // depth reading relative to the initial bed level.
+            // Placeholder only: setExprFields (run right after setFields,
+            // see Allrun) overwrites alpha.a in z < 0 with the
+            // Johnson-Jackson hydrostatic-equilibrium compaction profile,
+            // so the bed does not collapse at t = 0.
             volScalarFieldValue alpha.a 0.60
         );
     }
