@@ -54,12 +54,17 @@ Stage 2 (t_sim = 60–360 s) : mus = 0.35 복원, 세굴 진행.
 ### 실행
 
 ```bash
-./Allrun                     # 전체 자동 (기본: decomposeParDict의 192 코어)
-NP=32 ./Allrun               # 코어 수 변경
-RUN_PARALLEL=0 ./Allrun      # 직렬
-SOLVER=sedFoam ./Allrun      # 솔버 바이너리명이 다를 때
-SKIP_MESH=1 ./Allrun         # 기존 메시/0 재사용
+sbatch Allrun        # SLURM 배치 (192 코어, mpiexec.hydra + sedFoam)
+./Allclean           # 초기화 (0_org와 stage-control 기본값은 보존)
 ```
+
+Allrun은 mesh → setFields → setExprFields → decomposePar 후,
+mus/endTime include 파일을 바꿔 스핀업(log.spinup)과 세굴(log.scour)을
+연속 실행합니다. 각 단계 로그: log.block, log.snappy, log.setFields,
+log.setExprFields, log.decompose, log.spinup, log.scour.
+스핀업 길이를 바꾸려면 Allrun 상단의 SPINUP_END를 수정하고
+SCOUR_END = SPINUP_END + 300으로 맞춘 뒤, 후처리 시
+`extract_scour.py --t0 <SPINUP_END>`를 같은 값으로 실행하세요.
 
 ## 4. 세굴심 추출과 비교
 
