@@ -18,11 +18,13 @@ simulationType      RAS;
 
 RAS
 {
-//    RASModel        kOmegaSST;
-//    RASModel        kOmega;
-    RASModel        twophasekEpsilon;
-//    RASModel        RNGkEpsilon;
-//    RASModel        realizableKE;
+    // twophasekOmega (Wilcox 2006 based): better for the adverse pressure
+    // gradient / horseshoe vortex in front of the pier than k-epsilon.
+    // sedFoam does not provide kOmegaSST; this is the closest available.
+    // Requires 0/omega.b (provided in 0_org). Fall back to twophasekEpsilon
+    // if your sedFoam build does not include twophasekOmega.
+    RASModel        twophasekOmega;
+//    RASModel        twophasekEpsilon;
 
     turbulence      on;
 

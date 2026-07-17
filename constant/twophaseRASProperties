@@ -19,7 +19,7 @@ FoamFile
 // * * * * * definition of turbulence coefficient and others * * * * * * * * //
 
 // Shared coefficients
-SUS             SUS [ 0 0 0 0 0 0 0 ] 0;
+SUS             SUS [ 0 0 0 0 0 0 0 ] 1;  // turbulent suspension term on (sedFoam standard for scour); was 0
 KE1             KE1 [ 0 0 0 0 0 0 0 ] 0;  //density stra (Uf-Us)
 KE3             KE3 [ 0 0 0 0 0 0 0 ] 0;  //turb generation
 B               B [ 0 0 0 0 0 0 0 ] 0.25; //turb modulation coeff

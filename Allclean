@@ -1,0 +1,19 @@
+#!/bin/bash
+
+rm -rf 0 processor* postProcessing dynamicCode
+rm -f log.* *.out *.err
+rm -rf constant/polyMesh
+
+# numbered time directories (keep 0_org)
+for d in [0-9]* [0-9]*.[0-9]*
+do
+    [ -d "$d" ] && [ "$d" != "0_org" ] && rm -rf "$d"
+done
+
+# restore stage-control includes to their defaults
+cat > constant/musControl << 'EOF'
+mus             mus  [ 0 0 0 0 0 0 0 ] 0.35;
+EOF
+cat > system/endTimeControl << 'EOF'
+endTime         360;
+EOF

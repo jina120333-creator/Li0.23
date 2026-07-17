@@ -1,0 +1,2 @@
+// Managed by Allrun: stage 1 (spin-up) writes 60, stage 2 (scour) writes 360.
+endTime         360;

@@ -1,0 +1,46 @@
+#!/bin/bash
+#SBATCH -J Li023_c                # 작업 이름
+#SBATCH -N 1                      # 노드 수
+#SBATCH --ntasks-per-node=192     # MPI 프로세스 수
+#SBATCH --exclude=node6
+#SBATCH --exclude=node1
+#SBATCH -o %05j_%x.out
+#SBATCH -e %05j_%x.err
+
+WKDIR=$SLURM_SUBMIT_DIR
+source /appl/OpenFOAM/OpenFOAM-v2506/etc/bashrc
+
+SPINUP_END=60
+SCOUR_END=360      # SPINUP_END + 300 s of scour time (t* = 11)
+NP=192
+
+rm -rf processor*
+rm -rf 0
+cp -r 0_org 0
+rm -rf 0/tubpropotes
+
+blockMesh > log.block
+snappyHexMesh -overwrite > log.snappy
+
+setFields > log.setFields
+setExprFields > log.setExprFields     # interior log-law init (U.b, omega.b)
+
+decomposePar -force > log.decompose
+
+# ---- stage 1: rigid-bed spin-up (bed frozen, flow develops) ----
+cat > constant/musControl << EOF
+mus             mus  [ 0 0 0 0 0 0 0 ] 10;
+EOF
+cat > system/endTimeControl << EOF
+endTime         ${SPINUP_END};
+EOF
+mpiexec.hydra -np $NP sedFoam -parallel > log.spinup
+
+# ---- stage 2: mobile bed, scour (t_exp = t_sim - SPINUP_END) ----
+cat > constant/musControl << EOF
+mus             mus  [ 0 0 0 0 0 0 0 ] 0.35;
+EOF
+cat > system/endTimeControl << EOF
+endTime         ${SCOUR_END};
+EOF
+mpiexec.hydra -np $NP sedFoam -parallel > log.scour

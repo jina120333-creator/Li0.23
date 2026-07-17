@@ -30,21 +30,13 @@ regions
 
         fieldValues
         (
-            volScalarFieldValue alpha.a 0.58 //0.60
+            // 0.60: close to random loose packing (alphaMaxG = 0.61).
+            // 0.58 sits right above alphaMinFriction (0.57) and lets the
+            // bed settle/compact during the run, contaminating the scour
+            // depth reading relative to the initial bed level.
+            volScalarFieldValue alpha.a 0.60
         );
     }
-
-/*    boxToCell
-    {
-        box (-0.8 -0.125 0.0) (0.6 0.125 0.05);
-
-        fieldValues
-        (
-            volScalarFieldValue alpha.b 1;// 
-//            volVectorFieldValue U.b (0.005 0 0)
-        );
-    }   */
-
 );
 
 // ************************************************************************* //
