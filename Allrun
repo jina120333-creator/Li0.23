@@ -10,9 +10,29 @@
 WKDIR=$SLURM_SUBMIT_DIR
 source /appl/OpenFOAM/OpenFOAM-v2506/etc/bashrc
 
+SETTLE_END=3       # bed compaction / pff build-up with a small dt ceiling
 SPINUP_END=60
 SCOUR_END=360      # SPINUP_END + 300 s of scour time (t* = 11)
 NP=192
+
+# Writes system/timeStepControl for a stage: writeTimeStepControl <maxCo> <maxDeltaT>
+writeTimeStepControl () {
+cat > system/timeStepControl << EOF
+maxCo           $1;
+maxAlphaCo      $1;
+maxDeltaT       $2;
+EOF
+}
+
+# Writes constant/musControl for a stage: writeMusControl <mus> <mu2>
+# mu2 must stay > mus (mu(I) goes from mus at I=0 to mu2 at I=inf;
+# mu2 < mus is velocity-weakening friction -> ill-posed -> blow-up).
+writeMusControl () {
+cat > constant/musControl << EOF
+mus             mus  [ 0 0 0 0 0 0 0 ] $1;
+mu2             mu2  [ 0 0 0 0 0 0 0 ] $2;
+EOF
+}
 
 rm -rf processor*
 rm -rf 0
@@ -27,19 +47,27 @@ setExprFields > log.setExprFields     # interior log-law init (U.b, omega.b)
 
 decomposePar -force > log.decompose
 
-# ---- stage 1: rigid-bed spin-up (bed frozen, flow develops) ----
-cat > constant/musControl << EOF
-mus             mus  [ 0 0 0 0 0 0 0 ] 10;
+# ---- stage 0: bed settling (frozen bed, small dt ceiling) ----
+# The bed starts with no particle pressure and compacts under its own
+# submerged weight; the Johnson-Jackson pff is extremely stiff in alpha,
+# so this transient needs maxDeltaT ~ 2e-4 (the flow CFL does not limit it).
+writeMusControl 10 10.5
+writeTimeStepControl 0.3 2e-4
+cat > system/endTimeControl << EOF
+endTime         ${SETTLE_END};
 EOF
+mpiexec.hydra -np $NP sedFoam -parallel > log.settle
+
+# ---- stage 1: rigid-bed spin-up (bed frozen, flow develops) ----
+writeTimeStepControl 0.5 1e-3
 cat > system/endTimeControl << EOF
 endTime         ${SPINUP_END};
 EOF
 mpiexec.hydra -np $NP sedFoam -parallel > log.spinup
 
 # ---- stage 2: mobile bed, scour (t_exp = t_sim - SPINUP_END) ----
-cat > constant/musControl << EOF
-mus             mus  [ 0 0 0 0 0 0 0 ] 0.35;
-EOF
+writeMusControl 0.35 0.97
+writeTimeStepControl 0.3 5e-4
 cat > system/endTimeControl << EOF
 endTime         ${SCOUR_END};
 EOF

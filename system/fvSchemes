@@ -25,10 +25,12 @@ ddtSchemes
 // Gradient schemes
 gradSchemes
 {
-    default         Gauss linear;
-//    grad(k.b)         cellLimited Gauss linear 1;
-//    grad(omega.b)     cellLimited Gauss linear 1;
-//    grad(epsilon.b)   cellLimited Gauss linear 1;
+    // cellLimited on the snappyHexMesh cut cells around the pier: the
+    // limiter only activates at local extrema, so smooth regions keep 2nd
+    // order accuracy. Unlimited gradients fed the linearUpwind
+    // reconstructions (U, k, omega) with over/undershoots at the refined
+    // bed/pier cells (omega.b was being bounded to large negative values).
+    default         cellLimited Gauss linear 1;
 }
 
 // Divergence schemes

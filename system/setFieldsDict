@@ -30,7 +30,7 @@ regions
 
         fieldValues
         (
-            // 0.60: close to random loose packing (alphaMaxG = 0.61).
+            // 0.60: close to random loose packing.
             // 0.58 sits right above alphaMinFriction (0.57) and lets the
             // bed settle/compact during the run, contaminating the scour
             // depth reading relative to the initial bed level.

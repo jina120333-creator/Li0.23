@@ -29,7 +29,13 @@ eta0             eta0 [ 0 0 0 0 0 0 0 ] 3;
 eta1             eta1 [ 0 0 0 0 0 0 0 ] 5;
 
 
-packingLimiter  no;
+// The Johnson-Jackson contact pressure diverges as alpha -> alphaMax
+// (pff ~ Fr*(alpha-alphaMinFriction)^eta0 / (alphaMax-alpha)^eta1).
+// During the initial bed collapse the bottom cells overshoot straight to
+// alphaMax, pff hits ~1e10 Pa and the momentum equations blow up.
+// The packing limiter redistributes the excess (alpha > alphaMax) to
+// neighbouring cells BEFORE the hard clip, keeping pff finite.
+packingLimiter  yes;
 
 
 // ************************************************************************* //

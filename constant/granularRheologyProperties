@@ -21,14 +21,21 @@ granularDilatancy  off;
 
 granularCohesion  off;
 
-alphaMaxG       alphaMaxG [ 0 0 0 0 0 0 0 ] 0.61;
+// Must be consistent with alphaMax (0.635) in ppProperties: the solver
+// clips alpha at 0.635, so with alphaMaxG = 0.61 the whole bed sits in the
+// saturated branch of the BoyerEtAl viscosity (alpha/alphaMaxG capped at
+// 0.99 -> x100 amplification everywhere in the bed).
+alphaMaxG       alphaMaxG [ 0 0 0 0 0 0 0 ] 0.635;
 
-// mus lives in constant/musControl so the Allrun script can freeze the bed
-// during the rigid-bed spin-up stage (mus = 10) and restore the physical
-// value (mus = 0.35) for the scour stage without rewriting this file.
+// mus AND mu2 live in constant/musControl so the Allrun script can freeze
+// the bed during the rigid-bed spin-up stage and restore the physical
+// values for the scour stage without rewriting this file.
+// IMPORTANT: keep mu2 > mus at all times. mu(I) interpolates from mus
+// (I -> 0) to mu2 (I -> inf); mus = 10 with mu2 = 0.97 gives a friction
+// coefficient that DROPS from 10 to 0.97 with increasing shear rate
+// (velocity-weakening), which is mathematically ill-posed and was a main
+// driver of the spin-up blow-up.
 #include        "musControl"
-
-mu2             mu2  [ 0 0 0 0 0 0 0 ] 0.97;
 
 I0              I0  [ 0 0 0 0 0 0 0 ] 0.69;
 

@@ -1,4 +1,7 @@
 // Managed by Allrun:
-//   spin-up stage (rigid bed): mus = 10   (bed effectively immobile)
-//   scour stage  (mobile bed): mus = 0.35 (physical value, mu(I) rheology)
+//   spin-up stage (rigid bed): mus = 10,   mu2 = 10.5  (bed effectively immobile)
+//   scour stage  (mobile bed): mus = 0.35, mu2 = 0.97  (physical mu(I) rheology)
+// mu2 MUST stay > mus: mu(I) runs from mus (I->0) to mu2 (I->inf), so
+// mu2 < mus means friction weakens with shear rate -> ill-posed/unstable.
 mus             mus  [ 0 0 0 0 0 0 0 ] 0.35;
+mu2             mu2  [ 0 0 0 0 0 0 0 ] 0.97;

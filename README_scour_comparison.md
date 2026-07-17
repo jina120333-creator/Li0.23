@@ -35,14 +35,24 @@ t* = sqrt(g(s-1)·d50³)/D² · t = 0.03696 · t     →   t* 1 = 27.06 s
 분리해야 실험과 시간이 맞습니다.
 
 ```
-Stage 1 (t_sim = 0–60 s)   : 하상 동결 스핀업.  mus = 10 (constant/musControl)
+Stage 0 (t_sim = 0–3 s)    : 하상 침하(settling).  mus/mu2 = 10/10.5,
+                             maxDeltaT = 2e-4.  초기 하상(alpha=0.60)은 입자
+                             압력이 0인 상태라 자중으로 압밀되는데, 이 과정은
+                             Johnson-Jackson pff의 강한 강성(stiffness) 때문에
+                             유동 CFL보다 훨씬 작은 dt가 필요.
+Stage 1 (t_sim = 3–60 s)   : 하상 동결 스핀업.  maxDeltaT = 1e-3.
                              하상은 강체처럼 고정되고 유동/난류장만 발달.
-Stage 2 (t_sim = 60–360 s) : mus = 0.35 복원, 세굴 진행.
-                             ★ 실험 시계:  t_exp = t_sim − 60
+Stage 2 (t_sim = 60–360 s) : mus/mu2 = 0.35/0.97 복원, maxDeltaT = 5e-4,
+                             세굴 진행.   ★ 실험 시계:  t_exp = t_sim − 60
 ```
 
-- `endTime`과 `mus`는 각각 `system/endTimeControl`, `constant/musControl`
+- `endTime`, `mus·mu2`, `maxCo·maxAlphaCo·maxDeltaT`는 각각
+  `system/endTimeControl`, `constant/musControl`, `system/timeStepControl`
   include 파일로 분리되어 있고 Allrun 스크립트가 단계 전환 시 다시 씁니다.
+- ★ 동결 시 mu2도 함께 키워야 합니다 (mu2 > mus 유지). mu(I)는 I→0에서 mus,
+  I→∞에서 mu2로 가는 보간이므로, mus=10에 mu2=0.97을 그대로 두면 전단이
+  커질수록 마찰이 10→0.97로 "약해지는" velocity-weakening 유변학이 되어
+  수학적으로 불량설정(ill-posed) — 스핀업 발산의 주원인 중 하나였습니다.
 - 스핀업 단축을 위해 `setExprFields`(system/setExprFieldsDict)로 내부장을
   inlet과 동일한 로그 프로파일(U.b, omega.b)로 초기화합니다.
 - 스핀업 수렴 판정: `python3 scripts/check_approach_flow.py`

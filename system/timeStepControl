@@ -1,0 +1,9 @@
+// Managed by Allrun (see README_scour_comparison.md):
+//   Stage 0 (bed settling,  t = 0..3):    maxCo 0.3, maxAlphaCo 0.3, maxDeltaT 2e-4
+//   Stage 1 (rigid-bed spin-up, 3..60):   maxCo 0.5, maxAlphaCo 0.5, maxDeltaT 1e-3
+//   Stage 2 (scour, mobile bed, 60..360): maxCo 0.3, maxAlphaCo 0.3, maxDeltaT 5e-4
+// The settling stage must resolve the stiff bed-compaction transient
+// (Johnson-Jackson pff builds up from zero); the flow CFL does not see it.
+maxCo           0.3;
+maxAlphaCo      0.3;
+maxDeltaT       2e-4;

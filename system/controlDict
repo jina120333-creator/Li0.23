@@ -58,15 +58,19 @@ runTimeModifiable yes;
 
 adjustTimeStep  yes;
 
-// Conservative Courant number for sediment-water coupled calculation.
-maxCo           0.5;//1;//0.25; //0.5; //range 0.5-1.0
-
-maxAlphaCo      0.5;//1;//0.3; //0.5; 
-
-// Maximum allowed time step.
-// With local refined cells of about 0.625 mm and U0 = 0.233 m/s,
-// dt around 5e-4 to 7e-4 s gives Co around 0.2-0.3.
-maxDeltaT       3e-3; //1e-3; //5e-4; //2e-4;
+// maxCo / maxAlphaCo / maxDeltaT live in system/timeStepControl so the
+// Allrun script can use a much smaller time-step ceiling during the initial
+// bed-settling transient without rewriting this file.
+//
+// Why: the flow Courant number does NOT limit the granular compaction
+// dynamics. In the first ~1-2 s the bed (alpha = 0.60, no initial particle
+// pressure) collapses under its submerged weight; the Johnson-Jackson
+// contact pressure pff varies by orders of magnitude per 0.01 change in
+// alpha, so this transient is far stiffer than the flow CFL. With the old
+// maxDeltaT = 3e-3 the adaptive dt grew to ~1e-3 within 6 ms (Co was only
+// ~0.3) and the compaction overshot straight into the pff singularity
+// (pff ~ 1e10 Pa -> U.a ~ 150 m/s -> omega.b < 0 -> blow-up).
+#include        "timeStepControl"
 
 libs (
 "libturbulenceModels.so"
