@@ -24,13 +24,12 @@ startTime       startFrom;
 
 stopAt          endTime;
 
-// Two-stage run (see README_scour_comparison.md):
-//   Stage 1 (rigid-bed spin-up):   t = 0..60    -> Allrun writes endTime 60
-//   Stage 2 (scour, mobile bed):   t = 60..360  -> Allrun writes endTime 360
-// The scour clock is t_exp = t_sim - 60, so t_sim = 360 corresponds to
-// 300 s of scour time (t* = 11, the paper's first PIV instant).
-// endTime lives in system/endTimeControl so the Allrun script can switch
-// stages without rewriting (and de-commenting) this file.
+// The flow is developed beforehand in the rigid-bed precursor case
+// (precursor/, single-phase pimpleFoam) and mapped into the 0 folder, so
+// this sedFoam run is scour-only with a mobile bed from t = 0:
+//   t_exp = t_sim  (t* = 11 at ~298 s; see README_scour_comparison.md).
+// endTime lives in system/endTimeControl so the Allrun script can set it
+// without rewriting this file.
 #include        "endTimeControl"
 
 deltaT          1e-6; //1e-4;
@@ -58,18 +57,12 @@ runTimeModifiable yes;
 
 adjustTimeStep  yes;
 
-// maxCo / maxAlphaCo / maxDeltaT live in system/timeStepControl so the
-// Allrun script can use a much smaller time-step ceiling during the initial
-// bed-settling transient without rewriting this file.
-//
-// Why: the flow Courant number does NOT limit the granular compaction
-// dynamics. In the first ~1-2 s the bed (alpha = 0.60, no initial particle
-// pressure) collapses under its submerged weight; the Johnson-Jackson
-// contact pressure pff varies by orders of magnitude per 0.01 change in
-// alpha, so this transient is far stiffer than the flow CFL. With the old
-// maxDeltaT = 3e-3 the adaptive dt grew to ~1e-3 within 6 ms (Co was only
-// ~0.3) and the compaction overshot straight into the pff singularity
-// (pff ~ 1e10 Pa -> U.a ~ 150 m/s -> omega.b < 0 -> blow-up).
+// maxCo / maxAlphaCo / maxDeltaT live in system/timeStepControl (written
+// by Allrun). Keep maxDeltaT small (2e-4, the 3DScour tutorial value): the
+// flow Courant number does NOT limit the granular bed dynamics - the
+// Johnson-Jackson contact pressure pff varies by orders of magnitude per
+// 0.01 change in alpha, so the bed relaxation transient is far stiffer
+// than the flow CFL.
 #include        "timeStepControl"
 
 libs (
@@ -124,10 +117,10 @@ functions
 
     // ------------------------------------------------------------------
     // Approach-flow monitor: vertical profile of U.b and k.b at x = -0.4 m
-    // (10D upstream of the pier). Used to (a) verify the log-law profile
-    // survives the 0.8 m approach reach and (b) decide when the rigid-bed
-    // spin-up has converged: depth-averaged U ~ 0.233 m/s, and u* from a
-    // log-law fit ~ 0.016 m/s. See scripts/check_approach_flow.py.
+    // (10D upstream of the pier). Verifies that the mapped precursor flow
+    // (depth-averaged U ~ 0.233 m/s, log-law fit u* ~ 0.016 m/s) is
+    // maintained during the scour run. See scripts/check_approach_flow.py
+    // (use --case precursor to check the flow-development run itself).
     // ------------------------------------------------------------------
     approachFlow
     {

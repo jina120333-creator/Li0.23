@@ -29,14 +29,14 @@ granularCohesion  off;
 // (0.625 = sedFoam 3DScour tutorial value, Nagel et al. 2020.)
 alphaMaxG       alphaMaxG [ 0 0 0 0 0 0 0 ] 0.625;
 
-// mus AND mu2 live in constant/musControl so the Allrun script can freeze
-// the bed during the rigid-bed spin-up stage and restore the physical
-// values for the scour stage without rewriting this file.
-// IMPORTANT: keep mu2 > mus at all times. mu(I) interpolates from mus
-// (I -> 0) to mu2 (I -> inf); mus = 10 with mu2 = 0.97 gives a friction
-// coefficient that DROPS from 10 to 0.97 with increasing shear rate
-// (velocity-weakening), which is mathematically ill-posed and was a main
-// driver of the spin-up blow-up.
+// mus AND mu2 live in constant/musControl (written by Allrun). The values
+// are the physical sand-in-water ones (0.63/1.13) for the whole run: the
+// flow is developed beforehand in the rigid-bed precursor case, so there is
+// no mus-based bed-freezing stage any more (freezing via a huge mus kept
+// blowing up - in a quasi-static bed |D| ~ 0, so the dilatant pressure
+// cannot stop compaction and alpha still hits the Johnson-Jackson
+// singularity). IMPORTANT: keep mu2 > mus at all times; mu2 < mus is
+// velocity-weakening friction and mathematically ill-posed.
 #include        "musControl"
 
 // I0, Bphi: mu(I)/dilatancy coefficients for sand in water from the

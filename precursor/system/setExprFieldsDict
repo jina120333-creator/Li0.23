@@ -1,0 +1,55 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      setExprFieldsDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Initialise the interior with the fully developed log-law profile used at
+// the inlet, so the rigid-bed run only has to develop the pier flow field
+// and the turbulence instead of spinning up the whole channel from rest.
+//
+//   U(z)     = (ustar/kappa) * ln(30 z / ks)
+//   omega(z) = ustar / (sqrt(Cmu) kappa z)
+//
+//   ustar = 0.01617 m/s, kappa = 0.41, ks = 2.5*d50 = 1.5e-3 m
+//   ustar/kappa = 0.0394390
+//
+// The whole precursor mesh is water (z > 0); z is floored at ks/30 like the
+// inlet BCs.
+
+expressions
+(
+    UInit
+    {
+        field       U;
+        dimensions  [0 1 -1 0 0 0 0];
+
+        expression
+        #{
+            vector(0.0394390*log(30.0*max(pos().z(), 5.0e-5)/1.5e-3), 0, 0)
+        #};
+    }
+
+    omegaInit
+    {
+        field       omega;
+        dimensions  [0 0 -1 0 0 0 0];
+
+        expression
+        #{
+            0.01617/(0.3*0.41*max(pos().z(), 5.0e-5))
+        #};
+    }
+);
+
+// ************************************************************************* //

@@ -28,66 +28,70 @@ t* = sqrt(g(s-1)·d50³)/D² · t = 0.03696 · t     →   t* 1 = 27.06 s
 주의: 논문의 지수 피팅식(Eq. 2)은 c2 < 1이라 t→0에서 세굴률이 무한대가 되는 형태이므로
 첫 실측점 이전 구간으로 외삽해서 비교하면 안 됩니다. 실측점과 직접 비교하세요.
 
-## 3. 시간 정렬 방법 — 2단계 실행 (Allrun이 자동 수행)
+## 3. 시간 정렬 방법 — rigid-bed 프리커서 + 세굴 본계산 (Allrun이 자동 수행)
 
-실험의 t = 0은 "평평한 하상 위에 목표 유량이 확립된 순간"입니다. 시뮬레이션에서
-내부 유동장은 정지 상태에서 시작하므로, 유동 발달(스핀업) 구간을 세굴 시계에서
-분리해야 실험과 시간이 맞습니다.
+실험의 t = 0은 "평평한 하상 위에 목표 유량이 확립된 순간"입니다. 유동 발달을
+sedFoam 안에서 하상을 mus로 동결해 해결하려던 이전 방식은 반복적으로
+발산했습니다: 준정적 하상에서는 |D| ≈ 0이라 팽창성 입자압 pa(MuI)가 압밀을
+막지 못해 α가 Johnson-Jackson 특이점(alphaMax = 0.635)까지 압밀되고
+(pff ~ 1e10 Pa), 이후 pa/속도가 폭발하며 dt가 1e-56까지 짓눌렸습니다.
+또한 mus를 키우는 동결 자체가 마찰 점성을 극단적으로 키워 강성 문제를
+악화시킵니다.
+
+그래서 유동 발달을 **sedFoam 밖으로** 분리했습니다:
 
 ```
-Stage 0 (t_sim = 0–3 s)    : 하상 미세조정(settling).  mus/mu2 = 10/10.5,
-                             maxDeltaT = 2e-4.  하상은 setExprFields가
-                             Johnson-Jackson 평형 압밀 프로파일
-                             (α: 표면 0.570 → 바닥 0.6125)로 초기화하므로
-                             자중 붕괴 없이 잔여 불균형(수십 Pa)만 완화.
-Stage 1 (t_sim = 3–60 s)   : 하상 동결 스핀업.  maxDeltaT = 5e-4.
-                             하상은 강체처럼 고정되고 유동/난류장만 발달.
-Stage 2 (t_sim = 60–360 s) : mus/mu2 = 0.63/1.13 복원, maxDeltaT = 2e-4,
-                             세굴 진행.   ★ 실험 시계:  t_exp = t_sim − 60
+Stage 0 (precursor/, pimpleFoam, t = 0–60 s):
+    같은 메쉬에서 하상 셀(z < 0)을 topoSet + subsetMesh로 제거하고,
+    노출된 z = 0 면을 거친 벽 patch 'bed'(ks = 2.5·d50 = 1.5 mm,
+    nutkRoughWallFunction)로 만든 단상(물만) 케이스.
+    입자상이 아예 없으므로 압밀/유변학 발산이 원천적으로 불가능.
+    내부장은 로그법칙(U, omega)으로 초기화되어 60 s(≈ 유로 통과 10회)면
+    접근 유동과 교각 주변 유동(말굽와류 포함)이 충분히 발달.
+
+mapFields (Allrun이 자동 수행):
+    프리커서 최종 시각의 U/k/omega/nut를 U.b/k.b/omega.b/nut.b로 복사한 뒤
+    mapFields로 본 케이스 0 폴더에 매핑. 프리커서 메쉬는 본 메쉬의
+    z > 0 부분집합 그 자체이므로 물 영역 매핑은 1:1 정확.
+    z < 0(하상)은 소스 영역 밖이라 setFields/setExprFields가 만든
+    값(U.b = 0, JJ 평형 α 프로파일)이 그대로 유지됨.
+
+Stage 1 (sedFoam, t = 0–300 s):
+    mus/mu2 = 0.63/1.13, maxDeltaT = 2e-4. 처음부터 mobile bed로 세굴 진행.
+    ★ 실험 시계:  t_exp = t_sim  (스핀업 오프셋 없음)
 ```
 
-★ 압밀 안정성의 핵심은 `PPressureModel MuI` (granularRheologyProperties):
-팽창성 입자압 pa = (Bφ·α/(αMaxG−α))²·ρa·d²·|D|² 가 α → alphaMaxG(0.625)에서
-발산하며 과잉 압밀을 막아 줍니다. `none`으로 두면 α가 Johnson-Jackson
-pff의 특이점(alphaMax = 0.635)까지 그대로 압밀되어 pff ~ 1e10 Pa에 셀이
-고착되고, 그 셀에서 나오는 ±10 m/s 속도 제트가 dt를 짓눌러 계산이
-사실상 멈춥니다 (초기 발산의 근본 원인). alphaMaxG < alphaMax 를 반드시
-유지하세요. mus/mu2/I0/Bphi/relaxPa 값은 sedFoam 3DScour 튜토리얼
-(Nagel et al. 2020, 원형 실린더 세굴, 검증됨) 값입니다.
-여기에 더해 setExprFieldsDict가 하상 α를 JJ 평형 압밀 프로파일로 직접
-초기화해 붕괴 과정 자체를 제거합니다 (튜토리얼의 1D 컬럼 프리커서
-→ funkySetFields 매핑을 해석적 프로파일로 대체한 것). 그래도 불안정하면
-1D 프리커서 방식이 최후의 정석입니다.
-
-- `endTime`, `mus·mu2`, `maxCo·maxAlphaCo·maxDeltaT`는 각각
-  `system/endTimeControl`, `constant/musControl`, `system/timeStepControl`
-  include 파일로 분리되어 있고 Allrun 스크립트가 단계 전환 시 다시 씁니다.
-- ★ 동결 시 mu2도 함께 키워야 합니다 (mu2 > mus 유지). mu(I)는 I→0에서 mus,
-  I→∞에서 mu2로 가는 보간이므로, mus=10에 mu2=0.97을 그대로 두면 전단이
-  커질수록 마찰이 10→0.97로 "약해지는" velocity-weakening 유변학이 되어
-  수학적으로 불량설정(ill-posed) — 스핀업 발산의 주원인 중 하나였습니다.
-- 스핀업 단축을 위해 `setExprFields`(system/setExprFieldsDict)로 내부장을
-  inlet과 동일한 로그 프로파일(U.b, omega.b)로 초기화합니다.
-- 스핀업 수렴 판정: `python3 scripts/check_approach_flow.py`
-  → x = −0.4 m (10D 상류)에서 깊이평균 U ≈ 0.233 m/s, 로그법칙 피팅 u\* ≈ 0.016 m/s가
-  정체되면 수렴. **u\*가 0.016에 못 미치면 clear-water 특성상 세굴이 크게
-  과소예측되므로, 세굴 단계 결과를 보기 전에 반드시 이 값부터 확인하세요.**
-  60 s로 부족하면 Allrun의 `SPINUP_END`를 늘리면 됩니다 (SCOUR_END = SPINUP_END + 300 유지).
+- 하상 초기화는 그대로: setFields(α = 0.60 박스) → setExprFields가 z < 0을
+  Johnson-Jackson 평형 압밀 프로파일(α: 표면 0.570 → 바닥 0.6125)로 덮어써
+  자중 붕괴 과정을 제거합니다. `PPressureModel MuI`(alphaMaxG = 0.625 <
+  alphaMax = 0.635)와 packingLimiter도 유지 — 세굴 중 과잉 압밀 방지용.
+- 본 케이스 setExprFieldsDict의 물 영역 로그법칙(U.b, omega.b) 초기화는
+  mapFields 직전에 실행되는 **fallback**입니다: 매핑이 정상 수행되면
+  프리커서 결과로 덮어써지고, 프리커서 없이 돌리면 이전처럼 해석적
+  초기장으로라도 계산이 가능합니다.
+- inlet U.b의 시동 램프(tRamp)는 제거했습니다. t = 0부터 발달된 유동이
+  들어있으므로 inlet도 처음부터 완전한 로그 프로파일을 공급해야 합니다.
+- 유동 발달 수렴 판정: `python3 scripts/check_approach_flow.py --case precursor`
+  → x = −0.4 m (10D 상류)에서 깊이평균 U ≈ 0.233 m/s, 로그법칙 피팅
+  u\* ≈ 0.016 m/s가 정체되면 수렴. **u\*가 0.016에 못 미치면 clear-water
+  특성상 세굴이 크게 과소예측되므로, 세굴 결과를 보기 전에 반드시 이 값부터
+  확인하세요.** 60 s로 부족하면 Allrun의 `SPINUP_END`만 늘리면 됩니다
+  (세굴 시계와는 무관해졌으므로 SCOUR_END는 그대로 300).
 
 ### 실행
 
 ```bash
-sbatch Allrun        # SLURM 배치 (192 코어, mpiexec.hydra + sedFoam)
-./Allclean           # 초기화 (0_org와 stage-control 기본값은 보존)
+sbatch Allrun        # SLURM 배치 (192 코어, mpiexec.hydra)
+./Allclean           # 초기화 (0_org, precursor/0_org와 기본 include 값은 보존)
 ```
 
-Allrun은 mesh → setFields → setExprFields → decomposePar 후,
-mus/endTime include 파일을 바꿔 스핀업(log.spinup)과 세굴(log.scour)을
-연속 실행합니다. 각 단계 로그: log.block, log.snappy, log.setFields,
-log.setExprFields, log.decompose, log.spinup, log.scour.
-스핀업 길이를 바꾸려면 Allrun 상단의 SPINUP_END를 수정하고
-SCOUR_END = SPINUP_END + 300으로 맞춘 뒤, 후처리 시
-`extract_scour.py --t0 <SPINUP_END>`를 같은 값으로 실행하세요.
+Allrun 순서: blockMesh → snappyHexMesh → (precursor: topoSet → subsetMesh →
+setExprFields → pimpleFoam → reconstructPar) → 본 케이스 setFields →
+setExprFields → mapFields → decomposePar → sedFoam.
+로그: log.block, log.snappy, precursor/log.topoSet, precursor/log.subsetMesh,
+precursor/log.pimpleFoam, log.setFields, log.setExprFields, log.mapFields,
+log.scour.
+후처리는 `extract_scour.py --t0 0` (기본값) 그대로 실행하면 됩니다.
 
 ## 4. 세굴심 추출과 비교
 
@@ -97,7 +101,7 @@ SCOUR_END = SPINUP_END + 300으로 맞춘 뒤, 후처리 시
 - 실행 후:
 
 ```bash
-python3 scripts/extract_scour.py --t0 60
+python3 scripts/extract_scour.py          # t_exp = t_sim이므로 --t0 0 (기본값)
 ```
 
   → `scour_timeseries.csv` (t_sim, t_exp, t\*, S_front, S_side, S/D)와

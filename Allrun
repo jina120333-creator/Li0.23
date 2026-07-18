@@ -8,14 +8,15 @@
 #SBATCH -e %05j_%x.err
 
 WKDIR=$SLURM_SUBMIT_DIR
+cd "$WKDIR"
 source /appl/OpenFOAM/OpenFOAM-v2506/etc/bashrc
 
-SETTLE_END=3       # bed compaction / pff build-up with a small dt ceiling
-SPINUP_END=60
-SCOUR_END=360      # SPINUP_END + 300 s of scour time (t* = 11)
+SPINUP_END=60      # rigid-bed precursor: flow-development time (pimpleFoam)
+SCOUR_END=300      # sedFoam scour run; the bed is mobile from t = 0, so
+                   # t_exp = t_sim (t* = 11 at ~298 s)
 NP=192
 
-# Writes system/timeStepControl for a stage: writeTimeStepControl <maxCo> <maxDeltaT>
+# Writes system/timeStepControl for the scour run: writeTimeStepControl <maxCo> <maxDeltaT>
 writeTimeStepControl () {
 cat > system/timeStepControl << EOF
 maxCo           $1;
@@ -24,9 +25,7 @@ maxDeltaT       $2;
 EOF
 }
 
-# Writes constant/musControl for a stage: writeMusControl <mus> <mu2>
-# mu2 must stay > mus (mu(I) goes from mus at I=0 to mu2 at I=inf;
-# mu2 < mus is velocity-weakening friction -> ill-posed -> blow-up).
+# Writes constant/musControl: writeMusControl <mus> <mu2>  (keep mu2 > mus)
 writeMusControl () {
 cat > constant/musControl << EOF
 mus             mus  [ 0 0 0 0 0 0 0 ] $1;
@@ -34,38 +33,100 @@ mu2             mu2  [ 0 0 0 0 0 0 0 ] $2;
 EOF
 }
 
-rm -rf processor*
-rm -rf 0
-cp -r 0_org 0
-rm -rf 0/tubpropotes
+# Removes numbered time directories (keeps 0_org) in the current directory,
+# so a re-run cannot pick up results of a previous run via startFrom latestTime.
+cleanTimeDirs () {
+    for d in [0-9]* [0-9]*.[0-9]*
+    do
+        [ -d "$d" ] && [ "$d" != "0_org" ] && rm -rf "$d"
+    done
+}
 
+# ---- mesh (shared: the precursor mesh is a subset of this one) ----
+rm -rf processor*
+cleanTimeDirs
 blockMesh > log.block
 snappyHexMesh -overwrite > log.snappy
 
-setFields > log.setFields
-setExprFields > log.setExprFields     # interior log-law init (U.b, omega.b)
-
-decomposePar -force > log.decompose
-
-# ---- stage 0: bed settling (frozen bed, small dt ceiling) ----
-# The bed starts with no particle pressure and compacts under its own
-# submerged weight; the Johnson-Jackson pff is extremely stiff in alpha,
-# so this transient needs maxDeltaT ~ 2e-4 (the flow CFL does not limit it).
-writeMusControl 10 10.5
-writeTimeStepControl 0.3 2e-4
-cat > system/endTimeControl << EOF
-endTime         ${SETTLE_END};
-EOF
-mpiexec.hydra -np $NP sedFoam -parallel > log.settle
-
-# ---- stage 1: rigid-bed spin-up (bed frozen, flow develops) ----
-writeTimeStepControl 0.5 5e-4
+# ---- stage 0: rigid-bed flow development (single-phase pimpleFoam) ----
+# Instead of freezing the sediment with a huge mus (which kept blowing up:
+# a quasi-static bed has |D| ~ 0, so the dilatant pressure cannot stop the
+# compaction and alpha still hits the Johnson-Jackson singularity), the bed
+# cells (z < 0) are REMOVED from the mesh and the exposed z = 0 plane
+# becomes a rough wall (ks = 2.5 d50). pimpleFoam develops the approach
+# flow and the pier flow field on this truly rigid bed; the result becomes
+# the 0 folder of the sedFoam run.
+rm -rf precursor/processor* precursor/constant/polyMesh
+cp -r constant/polyMesh precursor/constant/polyMesh
+(
+cd precursor || exit 1
+cleanTimeDirs
 cat > system/endTimeControl << EOF
 endTime         ${SPINUP_END};
 EOF
-mpiexec.hydra -np $NP sedFoam -parallel > log.spinup
+topoSet > log.topoSet || exit 1
+subsetMesh waterCells -patch bed -overwrite > log.subsetMesh || exit 1
 
-# ---- stage 2: mobile bed, scour (t_exp = t_sim - SPINUP_END) ----
+# subsetMesh may write the subset mesh to 0/polyMesh instead of constant
+# (seen with -overwrite under a collated fileHandler); normalise so all
+# later steps read one mesh instance.
+if [ -d 0/polyMesh ]; then
+    rm -rf constant/polyMesh
+    mv 0/polyMesh constant/polyMesh
+    rmdir 0 2> /dev/null
+fi
+
+# subsetMesh creates the exposed-face patch 'bed' with type 'empty'; the
+# boundary conditions (noSlip, nutkRoughWallFunction, omegaWallFunction,
+# kqRWallFunction) all need a wall patch.
+python3 - << 'PYEOF' || exit 1
+import re
+path = "constant/polyMesh/boundary"
+txt = open(path).read()
+txt, n = re.subn(r"(\bbed\s*\{[^}]*?\btype\s+)\w+(\s*;)", r"\1wall\2", txt, flags=re.S)
+assert n == 1, "expected exactly one 'bed' patch in " + path
+txt = re.sub(r"(\bbed\s*\{[^}]*?\binGroups\s+)[^;]+(;)", r"\g<1>1(wall)\2", txt, flags=re.S)
+open(path, "w").write(txt)
+print("bed patch type set to wall")
+PYEOF
+
+cp -r 0_org 0
+setExprFields > log.setExprFields || exit 1   # log-law U/omega interior init
+decomposePar -force > log.decompose || exit 1
+mpiexec.hydra -np $NP pimpleFoam -parallel > log.pimpleFoam || \
+    { echo "ERROR: precursor pimpleFoam failed, see precursor/log.pimpleFoam" >&2; exit 1; }
+reconstructPar -latestTime > log.reconstruct || exit 1
+
+# Copy the final fields to the sedFoam phase-b names so mapFields matches
+# them against the scour-case 0 folder. A plain copy is enough: OpenFOAM
+# identifies a field by its FILE name when reading (the 'object' header
+# entry is not checked), and sed must not touch binary field files.
+LATEST=$(foamListTimes -latestTime)
+if [ -z "$LATEST" ] || [ "$LATEST" = "0" ]; then
+    echo "ERROR: precursor produced no result time (latest = '$LATEST')" >&2
+    exit 1
+fi
+for f in U k omega nut; do
+    cp "$LATEST/$f" "$LATEST/$f.b"
+done
+) || exit 1
+
+# ---- scour-case 0 folder: bed profile + mapped rigid-bed flow ----
+cp -r 0_org 0
+rm -rf 0/tubpropotes
+setFields > log.setFields || exit 1
+setExprFields > log.setExprFields || exit 1
+                                    # bed: JJ equilibrium alpha profile;
+                                    # water: log-law fallback (overwritten
+                                    # by mapFields next; keeps the case
+                                    # runnable if the mapping is skipped)
+mapFields precursor -sourceTime latestTime > log.mapFields || \
+    { echo "ERROR: mapFields from precursor failed, see log.mapFields" >&2; exit 1; }
+# mapFields only writes target cells inside the source domain (z > 0);
+# the bed region keeps U.b = 0 / omega.b = 5.3 / alpha.a profile from
+# setFields+setExprFields above.
+
+# ---- stage 1: mobile bed, scour from t = 0 (t_exp = t_sim) ----
 # mus/mu2 = 0.63/1.13: sand-in-water mu(I) values from the sedFoam 3DScour
 # tutorial (mus = tan(32deg)); maxDeltaT = 2e-4 as in that tutorial.
 writeMusControl 0.63 1.13
@@ -73,4 +134,5 @@ writeTimeStepControl 0.3 2e-4
 cat > system/endTimeControl << EOF
 endTime         ${SCOUR_END};
 EOF
+decomposePar -force > log.decompose || exit 1
 mpiexec.hydra -np $NP sedFoam -parallel > log.scour

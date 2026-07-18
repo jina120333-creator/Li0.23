@@ -1,0 +1,103 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Rigid-bed flow-development precursor (see README_scour_comparison.md):
+// single-phase pimpleFoam on the water column of the scour mesh (bed cells
+// removed, z = 0 turned into the rough wall patch 'bed'). The final time is
+// mapped onto the scour case 0 folder as U.b / k.b / omega.b / nut.b, so
+// the sedFoam run starts with a fully developed flow and t_exp = t_sim.
+
+application     pimpleFoam;
+
+startFrom       latestTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+// endTime = SPINUP_END, written by the Allrun script.
+#include        "endTimeControl"
+
+deltaT          1e-4;
+
+writeControl    adjustableRunTime;
+
+writeInterval   10;
+
+// Only the final (mapped) time matters; keep a couple of restart points.
+purgeWrite      3;
+
+writeFormat     binary;
+
+writePrecision  6;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable yes;
+
+adjustTimeStep  yes;
+
+OptimisationSwitches
+{
+    // Force the classic one-directory-per-rank layout for this case even
+    // if the site/user config selects 'collated' (the main case does, via
+    // its own controlDict): the precursor result is reconstructed with
+    // reconstructPar and then read serially by mapFields, and uncollated
+    // is the no-surprises path for that.
+    fileHandler uncollated;
+}
+
+maxCo           0.9;
+
+maxDeltaT       5e-3;
+
+functions
+{
+    // Same approach-flow monitor as the scour case (x = -0.4 m, 10D
+    // upstream): used to decide when the flow development has converged.
+    //   python3 scripts/check_approach_flow.py --case precursor
+    // Converged when depth-averaged U ~ 0.233 m/s and the log-law fit
+    // u* ~ 0.016 m/s are steady.
+    approachFlow
+    {
+        type            sets;
+        libs            (sampling);
+        writeControl    adjustableRunTime;
+        writeInterval   5;
+        setFormat       csv;
+        interpolationScheme cellPoint;
+        fields          (U k);
+
+        sets
+        (
+            approach
+            {
+                type    uniform;
+                axis    z;
+                start   (-0.4 0 0.0005);
+                end     (-0.4 0 0.0495);
+                nPoints 99;
+            }
+        );
+    }
+}
+
+// ************************************************************************* //

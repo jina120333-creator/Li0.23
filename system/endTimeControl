@@ -1,2 +1,2 @@
-// Managed by Allrun: stage 1 (spin-up) writes 60, stage 2 (scour) writes 360.
-endTime         360;
+// Managed by Allrun (scour run: t_exp = t_sim, mobile bed from t = 0).
+endTime         300;

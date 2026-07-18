@@ -1,0 +1,33 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      mapFieldsDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Used by:  mapFields precursor -sourceTime latestTime
+//
+// The precursor mesh is the exact subset of this mesh above z = 0 (created
+// with topoSet/subsetMesh from the same polyMesh), so the interior mapping
+// of U.b / k.b / omega.b / nut.b in the water column is one-to-one.
+// Target cells below z = 0 (the sand bed) lie outside the source domain and
+// keep the values set by setFields/setExprFields (U.b = 0 etc.).
+//
+// No patch value mapping is needed: all target boundary conditions keep
+// their own definitions (the inlet profiles are coded fixedValue BCs).
+
+patchMap        ( );
+
+cuttingPatches  ( );
+
+// ************************************************************************* //

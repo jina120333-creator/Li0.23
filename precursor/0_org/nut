@@ -1,0 +1,48 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      nut;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 2 -1 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    bed
+    {
+        // The rigid stand-in for the sand bed: Nikuradse roughness
+        // ks = 2.5*d50 = 1.5 mm, consistent with the log-law inlet profile
+        // (same ks) and the target u* = 0.016 m/s.
+        type            nutkRoughWallFunction;
+        Ks              uniform 1.5e-3;
+        Cs              uniform 0.5;
+        value           uniform 0;
+    }
+
+    "(sideWalls|bottom|pier)"
+    {
+        type            nutkWallFunction;
+        value           uniform 0;
+    }
+
+    "(inletWater|inletSediment|outletWater|outletSediment|top)"
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+}
+
+// ************************************************************************* //

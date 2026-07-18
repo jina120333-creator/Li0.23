@@ -15,8 +15,11 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 // Initialise the interior with the same fully developed log-law profile as
-// the inlet BCs, so the rigid-bed spin-up stage only has to relax the flow
-// near the bed instead of starting the whole domain from rest.
+// the inlet BCs. With the rigid-bed precursor workflow this is only a
+// FALLBACK for the water column: Allrun runs mapFields right after this,
+// overwriting z > 0 with the developed precursor flow (the z < 0 values set
+// here - U.b = 0, the alpha profile - are what actually survives, because
+// the bed lies outside the precursor domain and is not mapped).
 //
 //   U(z)     = (ustar/kappa) * ln(30 z / ks)      (z > 0, water column)
 //   omega(z) = ustar / (sqrt(Cmu) kappa z)

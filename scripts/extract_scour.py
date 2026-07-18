@@ -5,13 +5,14 @@ and compare it with Li, Yang & Yang (2020), Water 12, 2370, Figure 5.
 The functionObject samples vertical alpha.a profiles 2.5 mm off the pier
 surface (front, sideL, sideR). The bed elevation is the highest z at which
 alpha.a crosses ALPHA_C (default 0.5), and the scour depth is measured
-relative to the bed elevation at the reference time --t0 (end of the
-rigid-bed spin-up), i.e.
+relative to the bed elevation at the reference time --t0. With the rigid-bed
+precursor workflow the flow is already developed at t = 0 and the bed is
+mobile from the start, so t0 = 0 (the default):
 
     t_exp = t_sim - t0,      S(t) = z_bed(t0) - z_bed(t)
 
 Usage:
-    python3 scripts/extract_scour.py [--t0 60] [--alpha-c 0.5] [--case DIR]
+    python3 scripts/extract_scour.py [--t0 0] [--alpha-c 0.5] [--case DIR]
 
 Writes scour_timeseries.csv and (if matplotlib is available) scour_vs_paper.png.
 """
@@ -108,8 +109,9 @@ def collect(case, alpha_c):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--t0", type=float, default=60.0,
-                   help="spin-up end = experimental t=0 (default 60)")
+    p.add_argument("--t0", type=float, default=0.0,
+                   help="experimental t=0 in simulation time (default 0: "
+                        "the precursor workflow starts scour at t_sim = 0)")
     p.add_argument("--alpha-c", type=float, default=0.5,
                    help="alpha.a defining the bed interface (default 0.5)")
     p.add_argument("--case", default=".", help="case directory")
