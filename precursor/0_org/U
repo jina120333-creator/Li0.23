@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  2212                                  |
+|  \\    /   O peration     | Version:  v2506                                 |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -9,10 +9,9 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    arch        "LSB;label=64;scalar=64";
     class       volVectorField;
     location    "0";
-    object      U.b;
+    object      U;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -22,71 +21,53 @@ internalField   uniform (0 0 0);
 
 boundaryField
 {
-    /*inletWater
-    {
-        //type            fixedValue;
-        //value           uniform (0.1 0 0);
-        type            uniformFixedValue;
-        uniformValue    table
-        (
-             (0.0     (0      0 0))
-             (0.5     (0.05 0 0))
-             (3.0     (0.10  0 0))
-             (5.0     (0.15  0 0))
-             (10.0    (0.233 0 0))
-        );
-    }*/
-    
     inletWater
     {
-        //type            fixedValue;
-        //value           uniform (0.4 0 0);
+        // Same log-law inlet as the scour case (0_org/U.b), but WITHOUT the
+        // start-up ramp: the interior is initialised with the same profile
+        // by setExprFields, so ramping the inlet from zero would only send
+        // a deceleration wave through the domain.
         type            codedFixedValue;
         value           uniform (0 0 0);
         name            logLawInlet;
         code
         #{
-            // No start-up ramp: the interior flow field is mapped from the
-            // rigid-bed precursor (already fully developed), so the inlet
-            // must supply the full log-law profile from t = 0.
-            const scalar ustar = 0.01617; //0.016
+            const scalar ustar = 0.01617;
             const scalar kappa = 0.41;
             const scalar ks    = 1.5e-3;   // 2.5*d50
             vectorField& U = *this;
             const vectorField& Cf = patch().Cf();
             forAll(U, i)
             {
-                scalar z = max(Cf[i].z(), ks/30.0);   // z=0이 초기 하상면
+                scalar z = max(Cf[i].z(), ks/30.0);   // z = 0 is the bed
                 U[i] = vector((ustar/kappa)*log(30.0*z/ks), 0, 0);
             }
         #};
-
     }
 
-    inletSediment
-    {
-        type            fixedValue;
-        value           uniform (0 0 0);
-    }
-    outletWater
-    {
-        type            zeroGradient;
-    }
-    outletSediment
-    {
-        type            zeroGradient;
-    }
-    "(sideWalls|bottom|pier)"
+    // Zero-face leftovers of the full mesh (all their faces are in z < 0
+    // and were removed together with the bed cells by subsetMesh).
+    "(inletSediment|outletSediment|bottom)"
     {
         type            noSlip;
     }
+
+    outletWater
+    {
+        type            inletOutlet;
+        inletValue      uniform (0 0 0);
+        value           uniform (0 0 0);
+    }
+
+    "(sideWalls|pier|bed)"
+    {
+        type            noSlip;
+    }
+
     top
     {
         type            slip;
-        //type            pressureInletOutletVelocity;
-        //value           uniform (0 0 0);
     }
 }
-
 
 // ************************************************************************* //

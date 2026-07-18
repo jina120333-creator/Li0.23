@@ -10,13 +10,28 @@ do
     [ -d "$d" ] && [ "$d" != "0_org" ] && rm -rf "$d"
 done
 
+# rigid-bed precursor case
+(
+cd precursor 2>/dev/null || exit 0
+rm -rf 0 processor* postProcessing dynamicCode constant/polyMesh
+rm -f log.*
+for d in [0-9]* [0-9]*.[0-9]*
+do
+    [ -d "$d" ] && [ "$d" != "0_org" ] && rm -rf "$d"
+done
+cat > system/endTimeControl << 'EOF'
+endTime         60;
+EOF
+)
+
 # restore stage-control includes to their defaults
 cat > constant/musControl << 'EOF'
 mus             mus  [ 0 0 0 0 0 0 0 ] 0.63;
 mu2             mu2  [ 0 0 0 0 0 0 0 ] 1.13;
 EOF
 cat > system/endTimeControl << 'EOF'
-endTime         360;
+// Managed by Allrun (scour run: t_exp = t_sim, mobile bed from t = 0).
+endTime         300;
 EOF
 cat > system/timeStepControl << 'EOF'
 maxCo           0.3;

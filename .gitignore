@@ -10,6 +10,7 @@ scour_vs_paper.png
 # generated mesh
 constant/polyMesh/
 constant/extendedFeatureEdgeMesh/
+precursor/constant/polyMesh/
 
 # numbered time directories
 [0-9]*/
