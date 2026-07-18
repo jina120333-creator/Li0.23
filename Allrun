@@ -64,14 +64,38 @@ cleanTimeDirs
 cat > system/endTimeControl << EOF
 endTime         ${SPINUP_END};
 EOF
-topoSet > log.topoSet
-subsetMesh waterCells -patch bed -overwrite > log.subsetMesh
+topoSet > log.topoSet || exit 1
+subsetMesh waterCells -patch bed -overwrite > log.subsetMesh || exit 1
+
+# subsetMesh may write the subset mesh to 0/polyMesh instead of constant
+# (seen with -overwrite under a collated fileHandler); normalise so all
+# later steps read one mesh instance.
+if [ -d 0/polyMesh ]; then
+    rm -rf constant/polyMesh
+    mv 0/polyMesh constant/polyMesh
+    rmdir 0 2> /dev/null
+fi
+
+# subsetMesh creates the exposed-face patch 'bed' with type 'empty'; the
+# boundary conditions (noSlip, nutkRoughWallFunction, omegaWallFunction,
+# kqRWallFunction) all need a wall patch.
+python3 - << 'PYEOF' || exit 1
+import re
+path = "constant/polyMesh/boundary"
+txt = open(path).read()
+txt, n = re.subn(r"(\bbed\s*\{[^}]*?\btype\s+)\w+(\s*;)", r"\1wall\2", txt, flags=re.S)
+assert n == 1, "expected exactly one 'bed' patch in " + path
+txt = re.sub(r"(\bbed\s*\{[^}]*?\binGroups\s+)[^;]+(;)", r"\g<1>1(wall)\2", txt, flags=re.S)
+open(path, "w").write(txt)
+print("bed patch type set to wall")
+PYEOF
+
 cp -r 0_org 0
-setExprFields > log.setExprFields          # log-law U/omega interior init
-decomposePar -force > log.decompose
+setExprFields > log.setExprFields || exit 1   # log-law U/omega interior init
+decomposePar -force > log.decompose || exit 1
 mpiexec.hydra -np $NP pimpleFoam -parallel > log.pimpleFoam || \
     { echo "ERROR: precursor pimpleFoam failed, see precursor/log.pimpleFoam" >&2; exit 1; }
-reconstructPar -latestTime > log.reconstruct
+reconstructPar -latestTime > log.reconstruct || exit 1
 
 # Copy the final fields to the sedFoam phase-b names so mapFields matches
 # them against the scour-case 0 folder. A plain copy is enough: OpenFOAM
@@ -90,8 +114,9 @@ done
 # ---- scour-case 0 folder: bed profile + mapped rigid-bed flow ----
 cp -r 0_org 0
 rm -rf 0/tubpropotes
-setFields > log.setFields
-setExprFields > log.setExprFields   # bed: JJ equilibrium alpha profile;
+setFields > log.setFields || exit 1
+setExprFields > log.setExprFields || exit 1
+                                    # bed: JJ equilibrium alpha profile;
                                     # water: log-law fallback (overwritten
                                     # by mapFields next; keeps the case
                                     # runnable if the mapping is skipped)
@@ -109,5 +134,5 @@ writeTimeStepControl 0.3 2e-4
 cat > system/endTimeControl << EOF
 endTime         ${SCOUR_END};
 EOF
-decomposePar -force > log.decompose
+decomposePar -force > log.decompose || exit 1
 mpiexec.hydra -np $NP sedFoam -parallel > log.scour

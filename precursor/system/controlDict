@@ -55,6 +55,16 @@ runTimeModifiable yes;
 
 adjustTimeStep  yes;
 
+OptimisationSwitches
+{
+    // Force the classic one-directory-per-rank layout for this case even
+    // if the site/user config selects 'collated' (the main case does, via
+    // its own controlDict): the precursor result is reconstructed with
+    // reconstructPar and then read serially by mapFields, and uncollated
+    // is the no-surprises path for that.
+    fileHandler uncollated;
+}
+
 maxCo           0.9;
 
 maxDeltaT       5e-3;
