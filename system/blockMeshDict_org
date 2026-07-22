@@ -1,0 +1,132 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+convertToMeters 1;
+
+vertices
+(
+    // Bottom: z = -0.06
+    (-0.8  -0.125  -0.06)   // 0
+    ( 0.6  -0.125  -0.06)   // 1
+    ( 0.6   0.125  -0.06)   // 2
+    (-0.8   0.125  -0.06)   // 3
+
+    // Initial bed surface: z = 0
+    (-0.8  -0.125   0.00)   // 4
+    ( 0.6  -0.125   0.00)   // 5
+    ( 0.6   0.125   0.00)   // 6
+    (-0.8   0.125   0.00)   // 7
+
+    // Free surface / top boundary: z = 0.05
+    (-0.8  -0.125   0.05)   // 8
+    ( 0.6  -0.125   0.05)   // 9
+    ( 0.6   0.125   0.05)   // 10
+    (-0.8   0.125   0.05)   // 11
+);
+
+blocks
+(
+    // Sediment layer:
+    // z = -0.06 ~ 0.00
+    // dz = 0.005 m, 12 cells
+    hex (0 1 2 3 4 5 6 7) (140 25 6) simpleGrading (1 1 1)
+
+    // Water layer:
+    // z = 0.00 ~ 0.05
+    // dz = 0.005 m, 10 cells
+    hex (4 5 6 7 8 9 10 11) (140 25 5) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    inletWater
+    {
+        type patch;
+        faces
+        (
+            (0 4 7 3)
+        );
+    }
+
+    inletSediment
+    {
+        type patch;
+        faces
+        (
+            (4 8 11 7)
+        );
+    }
+    
+    outletSediment
+    {
+        type patch;
+        faces
+        (
+            (1 2 6 5)
+        );
+    }
+
+    outletWater
+    {
+        type patch;
+        faces
+        (
+            (5 6 10 9)
+        );
+    }
+    sideWalls
+    {
+        type wall;
+        faces
+        (
+            // y = -0.125 side wall
+            (0 1 5 4)
+            (4 5 9 8)
+
+            // y = +0.125 side wall
+            (3 7 6 2)
+            (7 11 10 6)
+        );
+    }
+
+    bottom
+    {
+        type wall;
+        faces
+        (
+            (0 3 2 1)
+        );
+    }
+
+    top
+    {
+        type patch;
+        faces
+        (
+            (8 9 10 11)
+        );
+    }
+);
+
+mergePatchPairs
+(
+);

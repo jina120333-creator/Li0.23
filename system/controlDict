@@ -1,0 +1,111 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2506                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    arch        "LSB;label=32;scalar=64";
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     sedFoam;
+
+startFrom       latestTime; //startTime;
+
+startTime       startFrom;
+
+stopAt          endTime;
+
+endTime         3600; //1000; //300; // t* = 11 corresponds to approximately 300 s.
+
+deltaT          1e-6; //1e-4;
+
+writeControl    adjustableRunTime;
+
+writeInterval   1; //0.5; //0.1;//0.05; //
+
+//purgeWrite      0;
+
+writeFormat     binary;
+
+writePrecision  6;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable yes;
+
+adjustTimeStep  yes;
+
+// Conservative Courant number for sediment-water coupled calculation.
+maxCo           0.5; //0.3; //0.5;//1;//0.25; //0.5; //range 0.5-1.0
+
+maxAlphaCo      0.5; //0.3; //0.5;//1;//0.3; //0.5; 
+
+// Maximum allowed time step.
+// With local refined cells of about 0.625 mm and U0 = 0.233 m/s,
+// dt around 5e-4 to 7e-4 s gives Co around 0.2-0.3.
+maxDeltaT       3e-3; //1e-3; //5e-4; //2e-4;
+
+libs (
+"libturbulenceModels.so"
+"libgroovyBC.so"
+"libgroovyStandardBCs.so"
+     );
+
+OptimisationSwitches
+  {
+      //- Parallel IO file handler
+      // uncollated (default), collated or masterUncollated
+      fileHandler collated;
+
+      //- collated: thread buffer size for queued file writes.
+      // If set to 0 or not sufficient for the file size threading is not used.
+      // Default: 2e9
+      maxThreadFileBufferSize 0;
+
+      //- masterUncollated: non-blocking buffer size.
+      // If the file exceeds this buffer size scheduled transfer is used.
+      // Default: 2e9
+      maxMasterFileBufferSize 2e9;
+  }
+
+/*DebugSwitches
+{
+    dimensionSet    0;
+}*/
+
+functions
+{
+    /*
+    // yPlus is intentionally not activated at this stage.
+    // For sedFoam, yPlus availability depends on turbulence model and fields.
+    // It is safer to run the case first, then post-process separately.
+
+    yPlus
+    {
+        type            yPlus;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    writeTime;
+    }
+
+    wallShearStress
+    {
+        type            wallShearStress;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    writeTime;
+    }
+    */
+}
+// ************************************************************************* //
