@@ -1,0 +1,53 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2506                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);  // 유동이 없을 때 초기 조건 (sedFoam과 동일)
+
+boundaryField
+{
+    // 메시 파일의 경계 이름에 따라 조정 필요
+    
+    inlet
+    {
+        type            fixedValue;
+        value           uniform (0 0 0);  // 입구 속도 (필요시 변경)
+    }
+
+    outlet
+    {
+        type            zeroGradient;
+    }
+
+    bottomWall
+    {
+        type            noSlip;
+    }
+
+    topWall
+    {
+        type            noSlip;
+    }
+
+    sides
+    {
+        type            noSlip;
+    }
+}
+
+// ************************************************************************* //
