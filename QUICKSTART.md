@@ -28,12 +28,26 @@ ls system/       # 시스템 설정 (5개 파일)
 
 ## 🎯 단계별 실행 절차
 
-### 1️⃣ 메시 생성 (필수)
+### 1️⃣ 메시 생성 (필수) - Pier 구조 포함
+
+**중요**: Pier 구조를 생성하려면 blockMesh + snappyHexMesh 두 단계 필요!
+
 ```bash
 cd singlePhase_case/
+
+# 1단계: 기본 육면체 메시
 blockMesh
 # 출력: "Mesh Bounding Box... Mesh stats..."
+
+# 2단계: Pier 구조 및 세밀 정제 (반드시 필요!)
+snappyHexMesh -overwrite
+# 출력: "Creating mesh from mesh.1..."
+
+# 검증 (선택사항)
+checkMesh
 ```
+
+**상세 설명**: `MESH_GENERATION.md` 참고
 
 ### 2️⃣ 시뮬레이션 실행
 
