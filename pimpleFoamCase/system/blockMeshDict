@@ -1,0 +1,104 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Rigid-bed counterpart of the sedFoam case: only the water column
+// (z = 0 ~ 0.05) is meshed. z = 0 (former sediment-bed surface) is now
+// a fixed, non-erodible wall, matching the sedFoam domain footprint so
+// the two cases share the same in-plane geometry for comparison.
+
+convertToMeters 1;
+
+vertices
+(
+    // Bed surface (rigid): z = 0.00
+    (-0.8  -0.125   0.00)   // 0
+    ( 0.6  -0.125   0.00)   // 1
+    ( 0.6   0.125   0.00)   // 2
+    (-0.8   0.125   0.00)   // 3
+
+    // Free surface / top boundary: z = 0.05
+    (-0.8  -0.125   0.05)   // 4
+    ( 0.6  -0.125   0.05)   // 5
+    ( 0.6   0.125   0.05)   // 6
+    (-0.8   0.125   0.05)   // 7
+);
+
+blocks
+(
+    // Water layer only: z = 0.00 ~ 0.05, dz = 0.005 m, 10 cells
+    hex (0 1 2 3 4 5 6 7) (140 25 5) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    inletWater
+    {
+        type patch;
+        faces
+        (
+            (0 4 7 3)
+        );
+    }
+
+    outletWater
+    {
+        type patch;
+        faces
+        (
+            (1 2 6 5)
+        );
+    }
+
+    sideWalls
+    {
+        type wall;
+        faces
+        (
+            // y = -0.125 side wall
+            (0 1 5 4)
+
+            // y = +0.125 side wall
+            (3 7 6 2)
+        );
+    }
+
+    bottom
+    {
+        type wall;
+        faces
+        (
+            (0 3 2 1)
+        );
+    }
+
+    top
+    {
+        type patch;
+        faces
+        (
+            (4 5 6 7)
+        );
+    }
+);
+
+mergePatchPairs
+(
+);
