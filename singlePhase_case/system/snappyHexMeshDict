@@ -19,7 +19,7 @@ FoamFile
 
 castellatedMesh true;
 snap            true;
-addLayers       true; //false;
+addLayers       false; // no bed/sediment layer generation
 
 // Geometry
 geometry
@@ -27,44 +27,11 @@ geometry
     pier
     {
         type searchableCylinder;
-        // Computational domain:
-        // z = -0.06 ~ 0.05
-        // Cylinder is slightly extended beyond the domain.
-        point1 (0 0 -0.061);
-        point2 (0 0  0.051);
+        // Define pier approximately spanning the vertical domain (adjust if needed)
+        point1 (0 0 -0.01);
+        point2 (0 0  0.06);
         radius 0.02; // D = 0.04 m
     }
-
-    // Fine region around the pier, including near-bed flow and horseshoe vortex zone
-    nearPierFineBox
-    {
-        type searchableBox;
-        //min (-0.10 -0.075 -0.030);
-        //max ( 0.10  0.075  0.050);
-        min (-0.06 -0.05 -0.015);
-        max ( 0.06  0.05  0.050);
-    }
-
-    // Fine scour-bed region around expected initial scour hole
-    scourBedFineBox
-    {
-        type searchableBox;
-        //min (-0.12 -0.075 -0.020);
-        //max ( 0.18  0.075  0.020);
-        //min (-0.08 -0.060 -0.020);
-        min (-0.10 -0.060 -0.025);
-        max ( 0.14  0.060  0.020);
-    }
-
-    // Broader bed refinement region for approach, side acceleration, and near-wake bed
-    /*
-    bedRefinementBox
-    {
-        type searchableBox;
-        min (-0.30 -0.105 -0.020);
-        max ( 0.40  0.105  0.020);
-    }
-    */
 }
 
 // Castellated mesh controls
@@ -76,7 +43,7 @@ castellatedMeshControls
     minRefinementCells 10;
     maxLoadUnbalance 0.10;
 
-    nCellsBetweenLevels 5; //4;
+    nCellsBetweenLevels 5;
 
     features
     (
@@ -84,16 +51,10 @@ castellatedMeshControls
 
     refinementSurfaces
     {
+        // Refine only on the pier surface (surface-based refinement)
         pier
         {
-            // With 10 mm background:
-            // level 3 -> 1.25 mm
-            // level 4 -> 0.625 mm
-            
-            //level (3 4);
-
-            //level (2 3);
-            level (1 2);
+            level (1 2); // coarse-fine levels (adjust as needed)
             patchInfo
             {
                 type wall;
@@ -103,27 +64,7 @@ castellatedMeshControls
 
     resolveFeatureAngle 30;
 
-    refinementRegions
-    {
-        nearPierFineBox
-        {
-            mode inside;
-            levels ((1E15 2));
-        }
-
-        scourBedFineBox
-        {
-            mode inside;
-            levels ((1E15 2)); //3));
-        }
-/*
-        bedRefinementBox
-        {
-            mode inside;
-            levels ((1E15 2));
-        }
-*/
-    }
+    // No volumetric sediment/bed refinement boxes - only pier surface refinement
 
     // Must be inside the computational region and outside the pier solid.
     locationInMesh (-0.395 0.00 0.025);
@@ -134,18 +75,17 @@ castellatedMeshControls
 // Snap controls
 snapControls
 {
-    nSmoothPatch 5; //3;
+    nSmoothPatch 5;
     tolerance 1.0;
-    nSolveIter 30; //20-40
-    nRelaxIter 5; //8;
-    nFeatureSnapIter 10; //10-20
-    // No eMesh file is required because we use implicit feature snapping.
-    implicitFeatureSnap true; //false;
+    nSolveIter 30;
+    nRelaxIter 5;
+    nFeatureSnapIter 10;
+    implicitFeatureSnap true;
     explicitFeatureSnap false;
     multiRegionFeatureSnap false;
 }
 
-// Layer controls
+// Layer controls (disabled)
 addLayersControls
 {
     relativeSizes true;
@@ -155,9 +95,8 @@ addLayersControls
     }
 
     expansionRatio 1.2;
-    finalLayerThickness 0.3; // final layer thickness=near cell size*0.3
-    //firstLayerThickness --; 
-    minThickness 0.1; //total layer thickness<near cell size*0.1; layer 생성안함
+    finalLayerThickness 0.3;
+    minThickness 0.1;
 
     nGrow 0;
     featureAngle 60;
@@ -174,14 +113,6 @@ addLayersControls
 
     nBufferCellsNoExtrude 0;
     nLayerIter 50;
-/*
-    nRelaxedIter       20;
-    writeVTK           false;
-    noErrors           false;
-    layerRecovery      1;
-    growZoneLayers     false;
-    projectGrownUp     0.0;
-*/
 }
 
 // Mesh quality controls
@@ -190,15 +121,15 @@ meshQualityControls
     maxNonOrtho 65;
     maxBoundarySkewness 20;
     maxInternalSkewness 4;
-    maxConcave  70; //80;
+    maxConcave  70;
 
     minVol          1e-13;
-    minTetQuality   1e-15; //1e-30;
+    minTetQuality   1e-15;
     minArea         -1;
     minTwist        0.02;
-    minDeterminant  0.001; //default 0.001
+    minDeterminant  0.001;
     minFaceWeight   0.02;
-    minVolRatio     0.01; //range 0-1, default 0.01
+    minVolRatio     0.01;
     minTriangleTwist -1;
 
     nSmoothScale 4;
