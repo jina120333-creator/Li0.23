@@ -1,0 +1,86 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2506                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    arch        "LSB;label=32;scalar=64";
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     pimpleFoam;
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         3600;  // 같은 시간 범위로 sedFoam과 비교
+
+deltaT          1e-6;
+
+writeControl    adjustableRunTime;
+
+writeInterval   1;
+
+writeFormat     binary;
+
+writePrecision  6;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable yes;
+
+adjustTimeStep  yes;
+
+maxCo           0.5;  // sedFoam과 동일한 쿠랑트 수
+
+maxDeltaT       3e-3;
+
+libs
+(
+    "libturbulenceModels.so"
+    "libgroovyBC.so"
+    "libgroovyStandardBCs.so"
+);
+
+OptimisationSwitches
+{
+    fileHandler collated;
+    maxThreadFileBufferSize 0;
+    maxMasterFileBufferSize 2e9;
+}
+
+functions
+{
+    // yPlus 벽 거리 함수 (선택사항)
+    /*
+    yPlus
+    {
+        type            yPlus;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    writeTime;
+    }
+
+    wallShearStress
+    {
+        type            wallShearStress;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    writeTime;
+    }
+    */
+}
+// ************************************************************************* //
