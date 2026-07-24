@@ -21,7 +21,20 @@ internalField   uniform 0;
 
 boundaryField
 {
-    "(sideWalls|bottom|pier)"
+    // Sediment bed: rigid wall carrying the grain roughness that, in the
+    // sedFoam case, was produced physically by the resolved particle bed.
+    // Ks = 2.5*d50 = 1.5e-3 m, the same Nikuradse roughness used by the
+    // log-law inlet in 0/U (d50 = 0.6 mm).
+    bottom
+    {
+        type            nutkRoughWallFunction;
+        Ks              uniform 1.5e-3;
+        Cs              uniform 0.5;
+        value           uniform 0;
+    }
+
+    // Smooth flume side walls and pier surface.
+    "(sideWalls|pier)"
     {
         type            nutkRoughWallFunction;
         Ks              uniform 0;
