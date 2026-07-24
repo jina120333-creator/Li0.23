@@ -1,0 +1,53 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      omega;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 -1 0 0 0 0];
+
+// omega0 = epsilon0 / (Cmu * k0) = 4.13e-4 / (0.09 * 8.5e-4), consistent
+// with the sedFoam fluid-phase k.b/epsilon.b initial values.
+internalField   uniform 5.4;
+
+boundaryField
+{
+    inletWater
+    {
+        type            fixedValue;
+        value           $internalField;
+    }
+
+    outletWater
+    {
+        type            inletOutlet;
+        inletValue      $internalField;
+        value           $internalField;
+    }
+
+    top
+    {
+        type            inletOutlet;
+        inletValue      $internalField;
+        value           $internalField;
+    }
+
+    "(sideWalls|bottom|pier)"
+    {
+        type            omegaWallFunction;
+        value           $internalField;
+    }
+}
+
+// ************************************************************************* //

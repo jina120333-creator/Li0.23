@@ -1,0 +1,64 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      nut;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 2 -1 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    // Sediment bed: rigid wall carrying the grain roughness that, in the
+    // sedFoam case, was produced physically by the resolved particle bed.
+    // Ks = 2.5*d50 = 1.5e-3 m, the same Nikuradse roughness used by the
+    // log-law inlet in 0/U (d50 = 0.6 mm).
+    bottom
+    {
+        type            nutkRoughWallFunction;
+        Ks              uniform 1.5e-3;
+        Cs              uniform 0.5;
+        value           uniform 0;
+    }
+
+    // Smooth flume side walls and pier surface.
+    "(sideWalls|pier)"
+    {
+        type            nutkRoughWallFunction;
+        Ks              uniform 0;
+        Cs              uniform 0.5;
+        value           uniform 0;
+    }
+
+    top
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+
+    inletWater
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+
+    outletWater
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+}
+
+// ************************************************************************* //

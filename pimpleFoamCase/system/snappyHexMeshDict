@@ -1,0 +1,170 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      snappyHexMeshDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Same pier geometry and refinement regions as the sedFoam case, so the
+// near-pier mesh resolution matches for a fair comparison.
+
+castellatedMesh true;
+snap            true;
+addLayers       true;
+
+geometry
+{
+    pier
+    {
+        type searchableCylinder;
+        point1 (0 0 -0.001);
+        point2 (0 0  0.051);
+        radius 0.02; // D = 0.04 m
+    }
+
+    nearPierFineBox
+    {
+        type searchableBox;
+        min (-0.06 -0.055 -0.015);
+        max ( 0.06  0.055  0.050);
+    }
+
+    scourBedFineBox
+    {
+        type searchableBox;
+        min (-0.08 -0.060 -0.020);
+        max ( 0.14  0.060  0.020);
+    }
+}
+
+castellatedMeshControls
+{
+    maxLocalCells  3000000;
+    maxGlobalCells 10000000;
+
+    minRefinementCells 10;
+    maxLoadUnbalance 0.10;
+
+    nCellsBetweenLevels 5;
+
+    features
+    (
+    );
+
+    refinementSurfaces
+    {
+        pier
+        {
+            level (1 2);
+            patchInfo
+            {
+                type wall;
+            }
+        }
+    }
+
+    resolveFeatureAngle 30;
+
+    refinementRegions
+    {
+        nearPierFineBox
+        {
+            mode inside;
+            levels ((1E15 2));
+        }
+
+        scourBedFineBox
+        {
+            mode inside;
+            levels ((1E15 2));
+        }
+    }
+
+    // Must be inside the fluid domain (z = 0 ~ 0.05) and outside the pier solid.
+    locationInMesh (-0.395 0.00 0.025);
+
+    allowFreeStandingZoneFaces true;
+}
+
+snapControls
+{
+    nSmoothPatch 5;
+    tolerance 1.0;
+    nSolveIter 30;
+    nRelaxIter 5;
+    nFeatureSnapIter 10;
+    implicitFeatureSnap true;
+    explicitFeatureSnap false;
+    multiRegionFeatureSnap false;
+}
+
+addLayersControls
+{
+    relativeSizes true;
+
+    layers
+    {
+    }
+
+    expansionRatio 1.2;
+    finalLayerThickness 0.3;
+    minThickness 0.1;
+
+    nGrow 0;
+    featureAngle 60;
+    slipFeatureAngle 30;
+
+    nRelaxIter 5;
+    nSmoothSurfaceNormals 1;
+    nSmoothNormals 3;
+    nSmoothThickness 10;
+
+    maxFaceThicknessRatio 0.5;
+    maxThicknessToMedialRatio 0.3;
+    minMedianAxisAngle 90;
+
+    nBufferCellsNoExtrude 0;
+    nLayerIter 50;
+}
+
+meshQualityControls
+{
+    maxNonOrtho 65;
+    maxBoundarySkewness 20;
+    maxInternalSkewness 4;
+    maxConcave  70;
+
+    minVol          1e-13;
+    minTetQuality   1e-15;
+    minArea         -1;
+    minTwist        0.02;
+    minDeterminant  0.001;
+    minFaceWeight   0.02;
+    minVolRatio     0.01;
+    minTriangleTwist -1;
+
+    nSmoothScale 4;
+    errorReduction 0.75;
+
+    relaxed
+    {
+        maxNonOrtho 75;
+    }
+}
+
+debug 0;
+
+mergeTolerance 1e-6;
+
+// ************************************************************************* //
